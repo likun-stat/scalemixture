@@ -26,5 +26,5 @@ and
 
 We are restricting focus to the tail by censoring, so that the low values won't affect the inference of the extremal dependence structure:
 
-![Alt text](scalemixture/www/6.png?raw=true "Adding a humble nugget effect")
+![plot1](scalemixture/www/6.png)
 
