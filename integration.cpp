@@ -56,11 +56,6 @@ NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double 
     
     gsl_set_error_handler_off();
     
-    // First decide a cut-off value for adopting asymptotic estimate
-    double big_x_values = 
-    
-    
-    
     for(int i = 0; i < n; i++) {
         struct my_f_params params = { x[i], tau_sqd, delta };
         F.params = &params;
