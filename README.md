@@ -26,5 +26,5 @@ and
 
 We are restricting focus to the tail by censoring, so that the low values won't affect the inference of the extremal dependence structure:
 
-![plot1](ttps://github.com/likun-stat/scalemixture/www/6.png)
+![plot1](www/6.png)
 
