@@ -6,12 +6,14 @@
 //  Copyright © 2018 ZhangLikun. All rights reserved.
 //
 
-// [[Rcpp::depends(RcppGSL)]]
 
 
 #include <RcppGSL.h>
 #include <math.h>
 #include <gsl/gsl_integration.h>
+
+// [[Rcpp::depends(RcppGSL)]]
+
 using namespace Rcpp;
 
 
@@ -44,7 +46,47 @@ double mix_me_dens_integrand(double x, void *p) {
 
 
 // [[Rcpp::export]]
-NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double relerr = 1e-10) {
+double pmixture_me_uni(double x, double tau_sqd, double delta, double relerr = 1e-10) {
+    
+    double result = 0.0;
+    
+    gsl_function F;
+    F.function = &mix_me_distn_integrand;
+    
+    gsl_integration_workspace *work = gsl_integration_workspace_alloc(1e5);
+    
+    gsl_set_error_handler_off();
+    
+    struct my_f_params params = { x, tau_sqd, delta };
+    F.params = &params;
+    
+    double abserr = 0.0;
+    
+    if(x>1){
+        
+        // QAGI adaptive integration on infinite intervals
+        double err = gsl_integration_qagil(&F, x-1, 1e-12, relerr, 1e5, work, &result, &abserr);
+        
+        if (!ISNAN(err)){
+            result = R::pnorm(x-1, 0.0, sqrt(tau_sqd), 1, 0) - result;
+        }
+        else {
+            Rcpp::Rcout << "Error in integration. Returning -1" << std::endl;
+            Rcpp::Rcout << "Err = " << err << std::endl;
+            result = -1.0;
+        }
+    }
+    else {result = -1.0;}
+    
+    gsl_integration_workspace_free(work);
+    
+    return result;
+}
+
+
+
+// [[Rcpp::export]]
+NumericVector pmixture_me_old(NumericVector x, double tau_sqd, double delta, double relerr = 1e-10) {
     
     int n = x.size();
     NumericVector resultVec(n);
@@ -89,7 +131,77 @@ NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double 
 
 
 // [[Rcpp::export]]
-NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double relerr = 1e-6) {
+double asymptotic_p(double x, double delta){
+    double result = 1-(delta/(2*delta-1))*pow(x,(delta-1)/delta)+((1-delta)/(2*delta-1))*pow(x,-1);
+    return result;
+}
+
+
+// [[Rcpp::export]]
+NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double relerr = 1e-10) {
+    
+    int n = x.size();
+    NumericVector resultVec(n);
+    
+    gsl_function F;
+    F.function = &mix_me_distn_integrand;
+    
+    gsl_integration_workspace *work = gsl_integration_workspace_alloc(1e5);
+    
+    gsl_set_error_handler_off();
+    
+    
+    // First decide a cutoff point where the quantile is high enough to use asymptotic results
+    double high_quantiles[] = {10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5, 14.0, 15.0, 20.0, 50.0};
+    double threshold = 50.0;
+    double init_p = 0.0;
+    double init_est = 0.0;
+    
+    for(int iter = 0; iter < 12; iter++){
+        init_p = pmixture_me_uni(high_quantiles[iter], tau_sqd, delta);
+        init_est = asymptotic_p(high_quantiles[iter], delta);
+        if(fabs(init_p - init_est)<0.0005){
+            threshold = high_quantiles[iter];
+            break;
+        }
+    }
+    
+    // Calculate CDF fucntion at each x values
+    for(int i = 0; i < n; i++) {
+        struct my_f_params params = { x[i], tau_sqd, delta };
+        F.params = &params;
+        
+        double result = 0.0;
+        double abserr = 0.0;
+        
+        if(x[i]>1 & x[i]<threshold){
+            
+            // QAGI adaptive integration on infinite intervals
+            double err = gsl_integration_qagil(&F, x[i]-1, 1e-12, relerr, 1e5, work, &result, &abserr);
+            
+            if (!ISNAN(err)){
+                result = R::pnorm(x[i]-1, 0.0, sqrt(tau_sqd), 1, 0) - result;
+            }
+            else {
+                Rcpp::Rcout << "Error in integration. Returning -1" << std::endl;
+                Rcpp::Rcout << "Err = " << err << std::endl;
+                result = -1.0;
+            }
+        }
+        else if(x[i]>=threshold) {result = asymptotic_p(x[i], delta);}
+        else {result = -1.0;}
+        
+        resultVec[i] = result;
+    }
+    
+    gsl_integration_workspace_free(work);
+    
+    return resultVec;
+}
+
+
+// [[Rcpp::export]]
+NumericVector dmixture_me_old(NumericVector x, double tau_sqd, double delta, double relerr = 1e-6) {
     
     int n = x.size();
     NumericVector resultVec(n);
@@ -135,6 +247,83 @@ NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double 
     
     return resultVec;
 }
+
+
+
+// [[Rcpp::export]]
+double asymptotic_d(double x, double delta){
+    double result = ((1-delta)/(2*delta-1))*(pow(x,-1/delta)-pow(x,-2));
+    return result;
+}
+
+
+
+// [[Rcpp::export]]
+NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double relerr = 1e-6) {
+    
+    int n = x.size();
+    NumericVector resultVec(n);
+    
+    gsl_function F;
+    F.function = &mix_me_dens_integrand;
+    
+    gsl_integration_workspace *work = gsl_integration_workspace_alloc(1e5);
+    
+    gsl_set_error_handler_off();
+    
+    // First decide a cutoff point where the quantile is high enough to use asymptotic results
+    double high_quantiles[] = {10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5, 14.0, 15.0, 20.0, 50.0};
+    double threshold = 50.0;
+    double init_p = 0.0;
+    double init_est = 0.0;
+    
+    for(int iter = 0; iter < 12; iter++){
+        init_p = pmixture_me_uni(high_quantiles[iter], tau_sqd, delta);
+        init_est = asymptotic_p(high_quantiles[iter], delta);
+        if(fabs(init_p - init_est)<0.0005){
+            threshold = high_quantiles[iter];
+            break;
+        }
+    }
+    
+    // Calculate PDF fucntion at each x values
+    for(int i = 0; i < n; i++) {
+        struct my_f_params params = { x[i], tau_sqd, delta };
+        F.params = &params;
+        
+        double result = 0.0;
+        double abserr = 0.0;
+        
+        if(x[i]>1 & x[i]<threshold){
+            
+            // QAGI adaptive integration on infinite intervals
+            double err = gsl_integration_qagil(&F, x[i]-1, 1e-12, relerr, 1e5, work, &result, &abserr);
+            
+            if (!ISNAN(err)){
+                result = - result;
+            }
+            else {
+                Rcpp::Rcout << "Error in integration. Returning -1" << std::endl;
+                Rcpp::Rcout << "Err = " << err << std::endl;
+                result = -1.0;
+            }
+        }
+        else if (x[i]>threshold) {result = asymptotic_d(x[i], delta);}
+        else {result = -1.0;}
+        
+        if (result > 0) {
+            resultVec[i] = result;
+        } else {
+            resultVec[i] = 0;
+        }
+    }
+
+    gsl_integration_workspace_free(work);
+    
+    return resultVec;
+}
+
+
 
 /*  Test in R
  # parameter settings
@@ -206,5 +395,7 @@ NumericVector find_xrange_pmixture_me(double min_p, double max_p,
 }
 //                                                                            //
 // -------------------------------------------------------------------------- //
+
+
 
 
