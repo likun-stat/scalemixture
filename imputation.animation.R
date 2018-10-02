@@ -1,16 +1,16 @@
 
-source("scalemix_likelihoods.R")
+source("~/Desktop/Research/scalemixture/scalemix_likelihoods.R")
 # source("scalemix_priors.R")
 # source("generic_samplers.R")
 source("~/Desktop/Research/scalemixture/scalemix_utils.R")
-
+setwd("~/Desktop/Research/")
 
 library(fields)   # For rdist
 # Simulation settings
 
 n.s <- 200        # Number of sites
 n.t <- 2          # Number of time points
-tau <- 0.04       # Nugget SD
+tau <-9      # Nugget SD
 delta <- 0.7      # For R
 lambda <- 0.5     # Powered exponential range
 gamma <-  1       # Powered exponential smoothness
@@ -122,9 +122,9 @@ par(mfrow=c(1, 1), mai=c(1.02,0.82,0.82,0.42))
 for (i in 1:n.updates) {
   for (k in 1:thin) {
     curr.draw <- X.star[ ,j]
-    X.star <- X.s.update.mixture.me(R, Y, X.imp, X.star, cen, 
+    X.star <- X.s.update.mixture.me.par(R, Y, X.imp, X.star, cen, 
                                     prob.below, theta.gpd, delta,
-                                    tau, V, d, v.q=0.5, n.chain = 100, thresh.X = thresh.X)$X.s
+                                    tau, V, d, v.q=2, n.chain = 100, thresh.X = thresh.X)$X.s
     X.imp[cen] <- update.censored.obs.mixture.me(X.s = X.star, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
   }
   if (max(curr.draw-X.star[ ,j]) > 0.0001) {
@@ -141,18 +141,15 @@ for (i in 1:n.updates) {
     dev.off()
   }
   
-  png(file=sprintf("~/Desktop/Research/plots/ani_%4.4i-01.png", i), height=3, width=6, units="in", res=150)
-  par(mfrow=c(1,1), mar=c(1, 1, 1, 1))
-  plot(S[ ,1], X[ ,j], type="n", lwd=3, xaxt="n", yaxt="n")
+  png(file=sprintf("./plots/ani_%4.4i-01.png", i), height=5, width=6, units="in", res=150)
+  plot(S[ ,1], X[ ,j], type="n", lwd=3, xaxt="n", yaxt="n", xlab="", ylab="")
   matplot(S[ ,1], X.s.trace, col=alpha("gray80", 0.05), type="l", add=TRUE)
   points(S[ ,1], X.imp[ ,j], pch=c(20, 4)[cen[ ,j]+1], col=2*(cen[ ,j]+1), cex=0.5)
   abline(h=thresh.X, lty=2, col="gray80", lwd=3)
   dev.off()
   
-  # pdf(file=sprintf("ani_files/ani_%4.4i-02.pdf", i), width=8, height=4)
-  png(file=sprintf("~/Desktop/plots/ani_%4.4i-02.png", i), height=3, width=6, units="in", res=150)
-  par(mfrow=c(1,1), mar=c(1, 1, 1, 1))
-  plot(S[ ,1], X[ ,j], type="n", lwd=3, xaxt="n", yaxt="n")
+  png(file=sprintf("./plots/ani_%4.4i-02.png", i), height=5, width=6, units="in", res=150)
+  plot(S[ ,1], X[ ,j], type="n", lwd=3, xaxt="n", yaxt="n", xlab="", ylab="")
   matplot(S[ ,1], X.s.trace, col=alpha("gray80", 0.05), type="l", add=TRUE)
   points(S[ ,1], X.imp[ ,j], pch=c(20, 4)[cen[ ,j]+1], col=2*(cen[ ,j]+1), cex=0.5)
   lines(S[ ,1], curr.draw, col="gray50", lwd=3)
@@ -160,20 +157,16 @@ for (i in 1:n.updates) {
   dev.off()
   
   
-  # pdf(file=sprintf("ani_files/ani_%4.4i-03.pdf", i), width=8, height=4)
-  png(file=sprintf("~/Desktop/plots/ani_%4.4i-03.png", i), height=3, width=6, units="in", res=150)
-  par(mfrow=c(1,1), mar=c(1, 1, 1, 1))
-  plot(S[ ,1], X[ ,j], type="n", lwd=3, xaxt="n", yaxt="n")
+  png(file=sprintf("./plots/ani_%4.4i-03.png", i), height=5, width=6, units="in", res=150)
+  plot(S[ ,1], X[ ,j], type="n", lwd=3, xaxt="n", yaxt="n", xlab="", ylab="")
   matplot(S[ ,1], X.s.trace, col=alpha("gray80", 0.05), type="l", add=TRUE)
   lines(S[ ,1], curr.draw, col="gray50", lwd=3)
   abline(h=thresh.X, lty=2, col="gray80", lwd=3)
   dev.off()  
   
   
-  # pdf(file=sprintf("ani_files/ani_%4.4i-04.pdf", i), width=8, height=4)
-  png(file=sprintf("~/Desktop/plots/ani_%4.4i-04.png", i), height=3, width=6, units="in", res=150)
-  par(mfrow=c(1,1), mar=c(1, 1, 1, 1))
-  plot(S[ ,1], X[ ,j], type="n", lwd=3, xaxt="n", yaxt="n")
+  png(file=sprintf("./plots/ani_%4.4i-04.png", i), height=5, width=6, units="in", res=150)
+  plot(S[ ,1], X[ ,j], type="n", lwd=3, xaxt="n", yaxt="n", xlab="", ylab="")
   matplot(S[ ,1], X.s.trace, col=alpha("gray80", 0.05), type="l", add=TRUE)
   lines(S[ ,1], curr.draw, col="gray50", lwd=3)
   abline(h=thresh.X, lty=2, col="gray80", lwd=3)
@@ -181,6 +174,8 @@ for (i in 1:n.updates) {
 }
 
 dev.off()
+
+par(mfrow=c(1, 1), mai=c(1.02,0.82,0.82,0.42))
 
 save(X.trace, X.s.trace, S, file="ani_files/traces.RData")
 

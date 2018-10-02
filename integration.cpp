@@ -40,7 +40,7 @@ double mix_me_dens_integrand(double x, void *p) {
     double delta = (params->delta);
     
     double half_result = ((1-delta)/(2*delta-1))*pow(xval-x,-2)-((1-delta)/(2*delta-1))*pow(xval-x,-1/delta);
-
+    
     return R::dnorm(x, 0.0, sqrt(tau_sqd), 0) * half_result;
 }
 
@@ -174,13 +174,14 @@ NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double 
         double result = 0.0;
         double abserr = 0.0;
         
-        if(x[i]>1 & x[i]<threshold){
+        if( (x[i]>1) & (x[i]<threshold) ){
             
             // QAGI adaptive integration on infinite intervals
             double err = gsl_integration_qagil(&F, x[i]-1, 1e-12, relerr, 1e5, work, &result, &abserr);
             
             if (!ISNAN(err)){
                 result = R::pnorm(x[i]-1, 0.0, sqrt(tau_sqd), 1, 0) - result;
+                if(result > 0.9) result = asymptotic_p(x[i], delta);
             }
             else {
                 Rcpp::Rcout << "Error in integration. Returning -1" << std::endl;
@@ -294,7 +295,7 @@ NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double 
         double result = 0.0;
         double abserr = 0.0;
         
-        if(x[i]>1 & x[i]<threshold){
+        if( (x[i]>1) & (x[i]<threshold) ){
             
             // QAGI adaptive integration on infinite intervals
             double err = gsl_integration_qagil(&F, x[i]-1, 1e-12, relerr, 1e5, work, &result, &abserr);
@@ -317,7 +318,7 @@ NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double 
             resultVec[i] = 0;
         }
     }
-
+    
     gsl_integration_workspace_free(work);
     
     return resultVec;
@@ -395,6 +396,7 @@ NumericVector find_xrange_pmixture_me(double min_p, double max_p,
 }
 //                                                                            //
 // -------------------------------------------------------------------------- //
+
 
 
 

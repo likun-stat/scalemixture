@@ -1,5 +1,7 @@
 Rcpp::sourceCpp('~/Desktop/Research/scalemixture/integration.cpp')
 Rcpp::sourceCpp('~/Desktop/Research/scalemixture/likelihood.cpp')
+source("~/Desktop/Research/scalemixture/scalemix_utils.R")
+source("~/Desktop/Research/scalemixture/scalemix_likelihoods.R")
 
 ## ------------- 1. Marginal CDF ---------------
 ## Plot the CDF function
@@ -182,3 +184,71 @@ X.s.likelihood.conditional.on.X(X.s[,1], X[,1], R[1], V, d, 0.04)
 
 system.time(X_s<-var_at_a_time_update_X_s(X[,1], R[1], V, d, 0.04,n_chain = 300)) #3.352  6.562  9.819 
 system.time(X_s<-var.at.a.time.update.X.s(X[,1], R[1], V, d, 0.04,n.chain = 300)) #4.431  8.627  12.811
+
+
+
+
+## ------------- 9. Test if OpenMP actually works --------------
+system.time(s4 <- long_computation_omp(5000, 4))  # 0.043
+system.time(tmp <- tryfor(1000000))  # 0.043
+system.time(tmp <- tryfor_omp(1000000, 2))  # 0.023 
+system.time(tmp <- tryfor_omp(1000000, 4))  # 0.013 
+system.time(tmp <- tryfor_omp(1000000, 6))  # 0.008 
+system.time(tmp <- tryfor_omp(1000000, 7))  # 0.0065
+system.time(tmp <- tryfor_omp(1000000, 8))  # 0.008 
+
+prob.below <- 0.8
+theta.gpd <- c(11, 1, 0)
+thresh.X <- qmixture.me.interp(prob.below, tau_sqd = tau, delta = delta) 
+sum(X < thresh.X) / length(X)
+cen <- X < thresh.X  
+
+library(evd)
+Y <- X
+Y[cen] <- NA
+Y[!cen] <- scalemix.me.2.gpd(x = X[!cen], tau_sqd = tau, delta = delta, theta.gpd = theta.gpd, prob.below=prob.below)
+
+X.imp <- X
+X.star <- X.s
+
+# OpenMP failure
+#system.time(res <- var_at_a_time_update_X_s_cols(R, X.imp, tau, V, d, v_q=0.5, n_chain=100, threads=2))  # 8.998
+
+
+
+
+## ------------- 10. Use foreach for parallelizaztion instead --------------
+ptm<-proc.time()
+for(t in 1:2){
+  # Proposal
+  # Treat the X process as the response, ignoring the marginal transformation
+  # i.e. prop.X.s ~ X.s | X, R, other.params
+  
+  metropolis <- var.at.a.time.update.X.s(X=X[,t], R=R[t], V=V, d=d, tau_sqd=tau, v.q = 0.5, n.chain = 100)
+  metropolis$X.s
+}
+proc.time()-ptm
+
+
+ptm<-proc.time()
+library(doParallel)
+library(foreach)
+registerDoParallel(cores=1)
+res<-foreach(t = 1:2, .combine="cbind") %dopar% {
+  # Proposal
+  # Treat the X process as the response, ignoring the marginal transformation
+  # i.e. prop.X.s ~ X.s | X, R, other.params
+  
+  metropolis <- var.at.a.time.update.X.s(X=X[,t], R=R[t], V=V, d=d, tau_sqd=tau, v.q = 0.5, n.chain = 100)
+  metropolis$X.s
+}
+proc.time()-ptm
+
+system.time(Xes <- X.s.update.mixture.me(R, Y, X.imp, X.star, cen, 
+                                            prob.below, theta.gpd, delta,
+                                            tau, V, d, v.q=0.5, n.chain = 100, thresh.X = thresh.X)$X.s) #8.706   215.607 
+
+system.time(Xes <- X.s.update.mixture.me.par(R, Y, X.imp, X.star, cen, 
+                                            prob.below, theta.gpd, delta,
+                                            tau, V, d, v.q=0.5, n.chain = 100, thresh.X = thresh.X)$X.s) #4.371   110.953 88.217
+

@@ -182,6 +182,63 @@ X.s.update.mixture.me <- function(R, Y, X, X.s, cen,
   return(list(X.s=X.s, accepted=accepted))
 }
 
+
+
+X.s.update.mixture.me.par <- function(R, Y, X, X.s, cen, 
+                                  prob.below, theta.gpd, delta,
+                                  tau_sqd, V, d, v.q=0.5, n.chain=100,
+                                  thresh.X=NULL) {
+  
+  library(doParallel)
+  library(foreach)
+  n.s <- nrow(Y)
+  n.t <- ncol(Y)
+  registerDoParallel(cores=n.t)
+  
+  accepted <- rep(FALSE, n.t)  
+  
+  
+  if (is.null(thresh.X)) thresh.X <- qmixture.me.interp(p = prob.below, tau_sqd = tau_sqd, delta = delta)
+  
+  Res <- foreach (t = 1:n.t, .combine = "cbind") %dopar% {
+    # Proposal
+    # Treat the X process as the response, ignoring the marginal transformation
+    # i.e. prop.X.s ~ X.s | X, R, other.params
+    
+    metropolis <- var_at_a_time_update_X_s(X=X[,t], R=R[t], V=V, d=d, tau_sqd=tau_sqd, v_q = v.q, n_chain =  n.chain)
+    prop.X.s <- metropolis$X.s
+    res <- c(X.s[,t],0)
+    
+    # M-H ratio    
+    log.rat <- 
+      X.s.likelihood.conditional.on.X(X.s[,t], X=X[,t], R=R[t], V=V, d=d, tau_sqd=tau_sqd)+ # Prop density of current value
+      marg.transform.data.mixture.me.likelihood(Y[ ,t], X[ ,t], prop.X.s,               # Likelihood of proposal
+                                                cen[ ,t], prob.below,
+                                                theta.gpd, delta,
+                                                tau_sqd, thresh.X=thresh.X) +
+      X.s.likelihood.conditional(prop.X.s, R[t], V, d) -                                # Likelihood of proposal
+      X.s.likelihood.conditional.on.X(prop.X.s, X=X[,t], R=R[t], V=V, d=d, tau_sqd=tau_sqd)-# Prop density of proposal
+      marg.transform.data.mixture.me.likelihood(Y[ ,t], X[ ,t], X.s[ ,t],               # Likelihood of current value
+                                                cen[ ,t], prob.below,
+                                                theta.gpd, delta,
+                                                tau_sqd, thresh.X=thresh.X) -
+      X.s.likelihood.conditional(X.s[ ,t], R[t], V, d)                                  # Likelihood of current value
+    
+    
+    
+    
+    if (runif(1) < exp(log.rat)) {
+      res<-c(prop.X.s,1)
+    }
+    res
+  }
+  
+  return(list(X.s=Res[1:n.s, ], accepted=Res[n.s+1, ]))
+}
+
+
+
+
 #                                                                              #
 ################################################################################
 
