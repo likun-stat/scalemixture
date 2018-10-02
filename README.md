@@ -28,3 +28,14 @@ We are restricting focus to the tail by censoring, so that the low values won't 
 
 ![plot1](www/6.png)
 
+We sample the latent process as follows:
+
+- Draw the smooth process _X*(s)_ given the noisy process _X(s)_.
+
+(No truncation!)
+
+- Draw the noise given the smooth process _X*(s)_.
+
+(Truncated, but univariate!)
+
+![gif](www/anime.gif)
