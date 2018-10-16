@@ -7,7 +7,7 @@ source("~/Desktop/Research/scalemixture/scalemix_likelihoods.R")
 ## Plot the CDF function
 delta <- 0.8
 tau <- 1   # Always variance = std^2
-x_vals <- seq(1.01, 20, length = 10000)
+x_vals <- seq(1.01, 20000000000, length = 10000)
 system.time(cdf_vals<-pmixture_me(x_vals, tau, delta))  #0.363
 plot(x_vals, cdf_vals, type="l")
 grid()
@@ -106,7 +106,7 @@ abline(v=q.vals,lty=3,col="blue")
 
 ## ------------- 5. Marginal transformation ---------------
 Y<-scalemix.me.2.gpd(c(20,30),1,0.3,c(11,1,0))
-gpd.me.2.scalemix(Y, tau_sqd=1, delta=0.3, theta.gpd=c(11,1,0))
+gpd.2.scalemix.me(Y, tau_sqd=1, delta=0.3, theta.gpd=c(11,1,0))
 
 
 
@@ -182,9 +182,29 @@ X.s.likelihood.conditional(X.s[,1], R[1], V, d)
 X_s_likelihood_conditional_on_X(X.s[,1], X[,1], R[1], V, d, 0.04)
 X.s.likelihood.conditional.on.X(X.s[,1], X[,1], R[1], V, d, 0.04)
 
-system.time(X_s<-var_at_a_time_update_X_s(X[,1], R[1], V, d, 0.04,n_chain = 300)) #3.352  6.562  9.819 
-system.time(X_s<-var.at.a.time.update.X.s(X[,1], R[1], V, d, 0.04,n.chain = 300)) #4.431  8.627  12.811
+system.time(X_s<-var_at_a_time_update_X_s(X[,1], R[1], V, d, 0.04,n_chain = 100)) #3.352  6.562  9.819 
+system.time(X_s<-var.at.a.time.update.X.s(X[,1], R[1], V, d, 0.04,n.chain = 100)) #4.431  8.627  12.811
 
+
+#########################################
+## Update using the false normal proposal
+#########################################
+
+t<-1
+X_s<-var_at_a_time_update_X_s(X[,t], R[t], V, d, 0.04,n_chain = 100)
+plot(X[,t],xlab="s",ylab="X", main=sprintf("R=%.4f", R[t]))
+grid()
+lines(1:200, X_s$X.s, col="red", lwd=2)
+
+regularized.d.inv <- 1/d * 1/R[t]^2 + 1/tau
+prop.mean <- eig2inv.times.vector(V, 1/regularized.d.inv, X[ ,t]) / tau
+prop.X.s <- prop.mean + eig2inv.times.vector(V, 1/sqrt(regularized.d.inv), rnorm(n.s))
+lines(1:200, prop.X.s, col="blue", lwd=2)
+
+thresh.X <- qmixture.me.interp(0.8, tau_sqd = tau, delta = delta) 
+abline(h=thresh.X, lty=2, col="grey50")
+legend("topright",lwd=2, col=c("red","blue"),legend=c("metropolis","normal"))
+abline(h=R[t])
 
 
 
@@ -252,3 +272,86 @@ system.time(Xes <- X.s.update.mixture.me.par(R, Y, X.imp, X.star, cen,
                                             prob.below, theta.gpd, delta,
                                             tau, V, d, v.q=0.5, n.chain = 100, thresh.X = thresh.X)$X.s) #4.371   110.953 88.217
 
+
+## ------------- 11. Apply generic sampler to update each parameter --------------
+# Run the imputation.animation.R before the MCMC run to generate data
+# 1. delta
+Res <- static.metr(z = R, starting.theta = delta, 
+    likelihood.fn = delta.update.mixture.me.likelihood, prior.fn = interval.unif,
+    hyper.params = 1, n.updates = 90000, prop.Sigma = NULL, sigma.m=NULL, verbose=FALSE, 
+    Y = Y, X.s = X.s, cen = cen, prob.below = prob.below, theta.gpd = theta.gpd, tau_sqd = tau)
+
+Res <- adaptive.metr(z = R, starting.theta = delta,
+    likelihood.fn = delta.update.mixture.me.likelihood, prior.fn = interval.unif,
+    hyper.params = 1, n.updates = 90000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = TRUE,
+    r.opt = .234, c.0 = 10, c.1 = .8, K = 10,
+    Y = Y, X.s = X.s, cen = cen, prob.below = prob.below, theta.gpd = theta.gpd, tau_sqd = tau)
+plot(1:90000, Res$trace[,1], type="l", xlab = "Index", ylab = expression(delta))
+abline(h=0.7, lty=2, col="red")
+
+
+# 2. lambda, delta (failed)
+Res <- static.metr(z = R, starting.theta = c(lambda, gamma), 
+    likelihood.fn = lam.gam.update.mixture.me.likelihood, prior.fn = lam.gam.prior,
+    hyper.params = 2, n.updates = 90000, prop.Sigma = NULL, sigma.m=NULL, verbose=FALSE, 
+    X.s = X.s, R = R, S = S)
+
+Res <- adaptive.metr(z = R, starting.theta = c(1, 1.5),
+    likelihood.fn = lam.gam.update.mixture.me.likelihood, prior.fn = lam.gam.prior,
+    hyper.params = 2, n.updates = 10000, prop.Sigma = NULL, adapt.cov = TRUE, return.prop.Sigma.trace = FALSE,
+    r.opt = .234, c.0 = 1, c.1 = .8, K = 100,
+    X.s = X.s, R = R, S = S)
+
+
+plot(1:10000, Res$trace[,1], type="l", xlab = "Index", ylab = expression(lambda))
+plot(1:10000, Res$trace[,2], type="l", xlab = "Index", ylab = expression(gamma))
+
+
+# 2a. rho
+Res <- adaptive.metr(z = R, starting.theta = log(rho),
+                     likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = log.rho.prior,
+                     hyper.params = 2, n.updates = 30000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = FALSE,
+                     r.opt = .234, c.0 = 10, c.1 = .8, K = 100,
+                     X.s = X.s, R = R, S = S)
+
+plot(1:30000, Res$trace[,1], type="l", xlab = "Index", ylab = expression(rho))
+abline(h=log(rho), lty=2, col="red")
+
+
+# 3. tau
+Res <- static.metr(z = R, starting.theta = tau, 
+    likelihood.fn = tau.update.mixture.me.likelihood, prior.fn = tau.sqd.prior,
+    hyper.params = c(0.1, 0.1), n.updates = 90000, prop.Sigma = NULL, sigma.m=NULL, verbose=FALSE, 
+    Y = Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, theta.gpd = theta.gpd)
+
+Res <- adaptive.metr(z = R, starting.theta = tau,
+    likelihood.fn = tau.update.mixture.me.likelihood, prior.fn = tau.sqd.prior,
+    hyper.params = c(0.1, 0.1), n.updates = 30000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = FALSE,
+    r.opt = .234, c.0 = 10, c.1 = .8, K = 10,
+    Y = Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, theta.gpd = theta.gpd)
+
+plot(1:30000, Res$trace[,1], type="l", xlab = "Index", ylab = expression(tau^2))
+abline(h=tau,lty=2,col="red")
+
+
+# 4. theta.gpd: scale, shape
+Res <- adaptive.metr(z = R, starting.theta = theta.gpd[2:3],
+    likelihood.fn = theta.gpd.update.mixture.me.likelihood, prior.fn = gpd.prior,
+    hyper.params = 0, n.updates = 100000, prop.Sigma = NULL, adapt.cov = TRUE, return.prop.Sigma.trace = FALSE,
+    r.opt = .234, c.0 = 20, c.1 = .8, K = 10,
+    Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
+
+plot(40000:100000, Res$trace[40000:100000,1], type="l", xlab = "Index", ylab = "scale")
+plot(40000:100000, Res$trace[40000:100000,2], type="l", xlab = "Index", ylab = "shape")
+
+
+# 5. Rt
+t <-2
+Res <- adaptive.metr(z = R, starting.theta = R[t],
+    likelihood.fn = Rt.update.mixture.me.likelihood, prior.fn = huser.wadsworth.prior,
+    hyper.params = delta, n.updates = 30000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = FALSE,
+    r.opt = .234, c.0 = 10, c.1 = .8, K = 10,
+    X.s = X.s[,t], delta = delta, V = V, d = d)
+
+plot(1:30000, Res$trace[1:30000,1], type="l", xlab = "Index", ylab = sprintf("R%i", t))
+abline(h=R[t], lty=2, col="red")

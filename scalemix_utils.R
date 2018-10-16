@@ -16,23 +16,37 @@ pow<-function(x,y){
 ## lambda ............................ powered exponential
 ## gamma ............................. powered exponential 
 ##
-corr.fn <- function(d, lambda, gamma) {
+## theta ............................. a 2-vector of correlation parameters:
+##                                     theta[1] = log(rho), where rho is the 
+##                                     range parameter
+##                                     theta[2] is ignored
+
+# corr.fn <- function(d, lambda, gamma) {
+#   
+#   n<- nrow(d)
+#   Sigma<-matrix(NA,n,n)
+#   for (i in 1:(n-1)) {
+#     for (j in (i+1):n) {
+#       Sigma[i,j] <- exp(- pow(d[i,j]/lambda, gamma))
+#       Sigma[j,i] <- Sigma[i,j]
+#     }
+#   }
+#   
+#   for (k in 1:n) {
+#     Sigma[k,k] <- 1
+#   }
+#   
+#   return(Sigma)
+# }
+
+corr.fn <- function(d, theta) {
   
-  n<- nrow(d)
-  Sigma<-matrix(NA,n,n)
-  for (i in 1:(n-1)) {
-    for (j in (i+1):n) {
-      Sigma[i,j] <- exp(- pow(d[i,j]/lambda, gamma))
-      Sigma[j,i] <- Sigma[i,j]
-    }
-  }
+  rho <- exp(theta[1])
   
-  for (k in 1:n) {
-    Sigma[k,k] <- 1
-  }
-  
+  Sigma <- (1 + d/rho) * exp(-d/rho) 
   return(Sigma)
 }
+
 ##
 ################################################################################
 ################################################################################
@@ -73,10 +87,12 @@ corr.fn <- function(d, lambda, gamma) {
 qmixture.me.interp <- function(p, tau_sqd, delta, mu=0, cdf.vals = NULL, x.vals = NULL,
                                n.x=200, lower=5, upper=20) {
   
+  large.delta.large.x <- FALSE
   if (is.null(x.vals)) {
     x.range <- find_xrange_pmixture_me(min(p), max(p), c(lower, upper), 
                                        tau_sqd, delta, relerr = 1e-10)
     # x.vals <- seq(x.range[1], x.range[2], length=n.x)
+    if(x.range[2]==Inf) {x.range[2] <- 10^20; large.delta.large.x <- TRUE}
     x.vals <- exp(seq(log(x.range[1]), log(x.range[2]), length=n.x))
     cdf.vals <- pmixture_me(x.vals, tau_sqd, delta)
   } else {
@@ -84,7 +100,12 @@ qmixture.me.interp <- function(p, tau_sqd, delta, mu=0, cdf.vals = NULL, x.vals 
       cdf.vals <- pmixture_me(x.vals, tau_sqd, delta)
     }
   }
-  q.vals <- spline(x=cdf.vals, y=x.vals, xout=p)$y
+  if(!large.delta.large.x) q.vals <- spline(x=cdf.vals, y=x.vals, xout=p)$y else{
+    which<- p>tail(cdf.vals,1)
+    q.vals <- rep(NA, length(p))
+    q.vals[which] <- x.range[2]
+    if(any(!which)) q.vals[!which] <- spline(x=cdf.vals, y=x.vals, xout=p[!which])$y
+  }
   return(q.vals)
   
 }
@@ -330,3 +351,31 @@ eig2logdet <- function(d) {
 ##
 ################################################################################
 ################################################################################
+
+
+
+################################################################################
+################################################################################
+## Compute the density of the mixing distribution in Huser-Wadsworth (2017).
+## delta in the notation in the manuscript.
+## The support of r is [1, infinity)
+##
+## R ................................. value at which to evaluate the density
+## delta 
+##
+dhuser.wadsworth <- function(R, delta, log=TRUE) {
+  
+  if(!all(R > 1)) return(-Inf)
+  n.t <- length(R)
+  
+  if (log) {
+    dens <- n.t * log((1-delta)/delta) - sum(log(R))/delta
+  } else {
+    dens <- ((1-delta)/delta)^n.t * (prod(R))^{-1/delta}
+  }
+  return(dens)
+}
+##
+################################################################################
+################################################################################
+

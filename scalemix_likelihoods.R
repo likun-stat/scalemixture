@@ -1,6 +1,6 @@
 ################################################################################
 ## The log likelihood of the data, where the data comes from a HOT scale mixture
-## of Gaussians, transformed to GPD
+## of Gaussians, transformed to GPD (matrix/vector input)
 ##
 ## Y ................................. a (n.s x n.t) matrix of data that are
 ##                                     marginally GPD, and conditionally
@@ -35,9 +35,11 @@ marg.transform.data.mixture.me.likelihood <- function(Y, X, X.s, cen, prob.below
   if (sum(!cen) > 0) {
     ll[!cen] <- dnorm(X[!cen], mean=X.s[!cen], sd=sqrt(tau_sqd), log=TRUE) +
       dgpd(Y[!cen], loc=loc, scale=scale, shape=shape, log=TRUE)  -
-      dmixture.me(X[!cen], tau_sqd = tau_sqd, delta = delta, log=TRUE) - 0.5*log(tau_sqd)
+      dmixture.me(X[!cen], tau_sqd = tau_sqd, delta = delta, log=TRUE)
   }
   
+  which <- is.na(ll)
+  if(any(which)) ll[which] <- -Inf  # Normal density larger order than marginal density of scalemix
   return(sum(ll)) 
 }
 
@@ -58,16 +60,18 @@ marg.transform.data.mixture.me.likelihood <- function(Y, X, X.s, cen, prob.below
 ##
 
 X.s.likelihood.conditional<-function(X.s, R, V, d){
-  X.s.to.Z <- qnorm(1-R/X.s)
-  loglik <- -0.5*eig2inv.quadform.vector(V, 1/d, X.s.to.Z)+0.5*sum(X.s.to.Z^2)-2*sum(log(X.s))
-  return(loglik)
+  if(any(X.s<R)) return(-Inf) else{
+    X.s.to.Z <- qnorm(1-R/X.s)
+    loglik <- -0.5*as.vector(eig2inv.quadform.vector(V, 1/d, X.s.to.Z))+0.5*sum(X.s.to.Z^2)-2*sum(log(X.s))-0.5*sum(log(d))+length(X.s)*log(R)
+    return(loglik)
+  }
 }
 
 
 X.s.likelihood.conditional.on.X<-function(X.s, X, R, V, d, tau_sqd){
   if(any(X.s<R)) return(-Inf) else{
     X.s.to.Z <- qnorm(1-R/X.s)
-    loglik <- -0.5*eig2inv.quadform.vector(V, 1/d, X.s.to.Z)+0.5*sum(X.s.to.Z^2)-2*sum(log(X.s))
+    loglik <- -0.5*as.vector(eig2inv.quadform.vector(V, 1/d, X.s.to.Z))+0.5*sum(X.s.to.Z^2)-2*sum(log(X.s))-0.5*sum(log(d))+length(X.s)*log(R)
     loglik <- loglik - 0.5*sum((X.s-X)^2)/tau_sqd
     return(loglik)
   }
@@ -128,7 +132,7 @@ var.at.a.time.update.X.s <- function(X, R, V, d, tau_sqd, v.q=0.5, n.chain=100){
 ## prob.below
 ## theta.gpd
 ## theta.mix
-## theta.gaussian
+## tau_sqd
 ## V ................................. eigen vectors of covariance Σ(λ,γ)
 ## d ................................. a vector of eigenvalues
 ##
@@ -237,6 +241,58 @@ X.s.update.mixture.me.par <- function(R, Y, X, X.s, cen,
 }
 
 
+X.s.update.mixture.me.par.norm.prop <- function(R, Y, X, X.s, cen, 
+                                      prob.below, theta.gpd, delta,
+                                      tau_sqd, V, d, v.q=1, n.chain=100,
+                                      thresh.X=NULL) {
+  
+  library(doParallel)
+  library(foreach)
+  n.s <- nrow(Y)
+  n.t <- ncol(Y)
+  registerDoParallel(cores=n.t)
+  
+  accepted <- rep(FALSE, n.t)  
+  
+  
+  if (is.null(thresh.X)) thresh.X <- qmixture.me.interp(p = prob.below, tau_sqd = tau_sqd, delta = delta)
+  
+  Res <- foreach (t = 1:n.t, .combine = "cbind") %dopar% {
+    # Proposal
+    # Treat the X process as the response, ignoring the marginal transformation
+    # i.e. prop.X.s ~ X.s | X, R, other.params
+    regularized.d.inv <- 1/d * 1/R[t]^2 + 1/tau_sqd
+    prop.mean <- eig2inv.times.vector(V, 1/regularized.d.inv, X[ ,t]) / tau_sqd
+    prop.X.s <- prop.mean + eig2inv.times.vector(V, v.q/sqrt(regularized.d.inv), rnorm(n.s))
+    
+    res <- c(X.s[,t],0)
+    
+    # M-H ratio    
+    log.rat <- 
+      dmvn.eig(X.s[ ,t] - prop.mean, V, regularized.d.inv/v.q^2) + # Prop density of current value
+      marg.transform.data.mixture.me.likelihood(Y[ ,t], X[ ,t], prop.X.s,               # Likelihood of proposal
+                                                cen[ ,t], prob.below,
+                                                theta.gpd, delta,
+                                                tau_sqd, thresh.X=thresh.X) +
+      X.s.likelihood.conditional(prop.X.s, R[t], V, d) -                                # Likelihood of proposal
+      dmvn.eig(prop.X.s - prop.mean, V, regularized.d.inv/v.q^2) - # Prop density of proposal
+      marg.transform.data.mixture.me.likelihood(Y[ ,t], X[ ,t], X.s[ ,t],               # Likelihood of current value
+                                                cen[ ,t], prob.below,
+                                                theta.gpd, delta,
+                                                tau_sqd, thresh.X=thresh.X) -
+      X.s.likelihood.conditional(X.s[ ,t], R[t], V, d)                                  # Likelihood of current value
+    
+    
+    
+    
+    if (runif(1) < exp(log.rat)) {
+      res<-c(prop.X.s,1)
+    }
+    res
+  }
+  
+  return(list(X.s=Res[1:n.s, ], accepted=Res[n.s+1, ]))
+}
 
 
 #                                                                              #
@@ -274,5 +330,255 @@ update.censored.obs.mixture.me <- function(X.s, cen, tau_sqd, thresh.X) {
 #                                                                              #
 ################################################################################
 
+
+
+################################################################################
+## For the generic Metropolis sampler
+## Samples from the parameters of the mixing distribution, for the scale 
+## mixture of Gaussians, where the   
+## mixing distribution comes from Huser-wadsworth scale mixture.
+##
+## data............................... a n.t vector of scaling factors
+## params............................. delta (from Huser and Wadsworth 2017)
+## Y ................................. a (n.s x n.t) matrix of data that are
+##                                     marginally GPD, and conditionally
+##                                     independent given X(s)
+## X.s ............................... the latent Gaussian process, without the
+##                                     measurement error
+## cen 
+## prob.below
+## theta.gpd
+## tau_sqd
+##
+
+delta.update.mixture.me.likelihood <- function(data, params, Y, X.s, cen, 
+                                                   prob.below, theta.gpd,
+                                                   tau_sqd) {
+  R <- data
+  delta <- params
+  if(delta < 0 || delta > 1) return(-Inf)
+  
+  X <- NA * Y
+  X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd=tau_sqd, delta=delta, 
+                               theta.gpd=theta.gpd, prob.below = prob.below)
+  
+  ll <- marg.transform.data.mixture.me.likelihood(Y, X, X.s, cen, prob.below,
+               theta.gpd, delta, tau_sqd) + dhuser.wadsworth(R, delta, log=TRUE)
+
+  return(ll)
+}
+# delta.update.mixture.me.likelihood(R, delta, Y, X.s, cen, prob.below, theta.gpd, tau)
+
+#                                                                              #
+################################################################################
+
+
+
+################################################################################
+## For the generic Metropolis sampler
+## Samples from the measurement error variance (on the X scale), for the scale 
+## mixture of Gaussians, where the   
+## mixing distribution comes from Huser-wadsworth scale mixture.
+## Just a wrapper for marg.transform.data.mixture.me.likelihood
+##
+##   *********** If we do end up updating the prob.below parameter, this
+##   *********** is a good place to do it.
+##
+## data............................... a n.t vector of scaling factors
+## params............................. tau_sqd
+## Y ................................. a (n.s x n.t) matrix of data that are
+##                                     marginally GPD, and conditionally
+##                                     independent given X(s)
+## X.s ............................... the latent Gaussian process, without the
+##                                     measurement error
+## cen 
+## prob.below
+## theta.gpd
+## delta
+##
+tau.update.mixture.me.likelihood <- function(data, params, Y, X.s, cen, 
+                                                 prob.below, delta, 
+                                                 theta.gpd) {
+  
+  R <- data
+  tau_sqd <- params
+
+  X <- NA * Y
+  X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd=tau_sqd, delta=delta, 
+                               theta.gpd=theta.gpd, prob.below = prob.below)
+  
+  ll <- marg.transform.data.mixture.me.likelihood(Y, X, X.s, cen, prob.below,
+                                                  theta.gpd, delta, tau_sqd)
+  
+  return(ll)
+}
+#tau.update.mixture.me.likelihood(R, tau, Y, X.s, cen, prob.below, delta, theta.gpd)
+
+#                                                                              #
+################################################################################
+
+
+
+################################################################################
+## For the generic Metropolis sampler
+## Samples from the parameters of the GPD response distribution, for the scale 
+## mixture of Gaussians, where the   
+## mixing distribution comes from Huser-wadsworth scale mixture.
+## Just a wrapper for marg.transform.data.mixture.me.likelihood
+##
+## data............................... a n.t vector of scaling factors
+## params............................. a 2-vector of parameters:
+##                                     theta[1] = GPD scale
+##                                     theta[2] = GPD shape
+## Y ................................. a (n.s x n.t) matrix of data that are
+##                                     marginally GPD, and conditionally
+##                                     independent given X(s)
+## X.s ............................... the latent Gaussian process, without the
+##                                     measurement error
+## cen 
+## prob.below
+## theta.gpd
+## delta
+## tau_sqd
+##
+theta.gpd.update.mixture.me.likelihood <- function(data, params, Y, X.s, cen, 
+                                                   prob.below, delta,
+                                                   tau_sqd, loc, thresh.X=NULL) {
+  
+  R <- data
+  theta.gpd <- c(loc, params)
+  
+  scale <- params[1]
+  shape <- params[2]
+  if (shape >= 0) max.support <- Inf  else max.support <- loc - scale/shape
+  
+  # If the parameters imply support that is not consistent with the data,
+  # then reject the parameters.
+  if (max(Y, na.rm=TRUE) > max.support) return(-Inf)
+  
+  X <- NA * Y
+  X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd=tau_sqd, delta=delta, 
+                               theta.gpd=theta.gpd, prob.below = prob.below)
+  
+  ll <- marg.transform.data.mixture.me.likelihood(Y, X, X.s, cen, prob.below,
+                                  theta.gpd, delta, tau_sqd, thresh.X = thresh.X)
+  
+  return(ll)
+}
+
+# theta.gpd.update.mixture.me.likelihood(R, c(1,0), Y, X.s, cen, prob.below, delta,
+#                                               tau, loc=thresh, thresh.X=thresh.X)
+
+#                                                                              #
+################################################################################
+
+
+
+################################################################################
+## For the generic Metropolis sampler
+## Samples from the parameters of the underlying Gaussian process, for the scale 
+## mixture of Gaussians, where the   
+## mixing distribution comes from Huser-wadsworth scale mixture.
+##
+## data............................... a n.t vector of scaling factors
+## params............................. a 2-vector of parameters:
+##                                     lambda = params[1]
+##                                     gamma  = params[2]
+## X.s ............................... the latent Gaussian process, without the
+##                                     measurement error
+## R
+## S
+## V, d
+##
+lam.gam.update.mixture.me.likelihood <- function(data, params, X.s, R, S, 
+                                                 V=NULL, d=NULL) {
+  
+  library(doParallel)
+  library(foreach)
+  if (!is.matrix(X.s)) X.s <- matrix(X.s, ncol=1)
+  n.t <- ncol(X.s)
+  registerDoParallel(cores=n.t)
+  
+  R <- data
+  lambda <- params[1]
+  gamma <- params[2]
+  if(lambda<0 || gamma<0 || gamma>2)  return(-Inf)
+  
+  if(is.null(V)){
+    Cor   <- corr.fn(rdist(S), lambda = lambda, gamma = gamma)
+    eig.Sigma <- eigen(Cor, symmetric=TRUE)
+    V <- eig.Sigma$vectors
+    d <- eig.Sigma$values
+  }
+  
+  ll<-foreach(i = 1:n.t, .combine = "c") %dopar% {
+    X.s.likelihood.conditional(X.s[,i], R[i], V, d)
+    # dmvn.eig(qnorm(1-R[i]/X.s[, i]), V = V, d.inv = 1/d)
+  }
+  
+  return(sum(ll))
+}
+
+rho.update.mixture.me.likelihood <- function(data, params, X.s, R, S, 
+                                                 V=NULL, d=NULL) {
+  
+  library(doParallel)
+  library(foreach)
+  if (!is.matrix(X.s)) X.s <- matrix(X.s, ncol=1)
+  n.t <- ncol(X.s)
+  registerDoParallel(cores=n.t)
+  
+  R <- data
+  log_rho <- params
+
+  if(is.null(V)){
+    Cor   <- corr.fn(rdist(S), theta = log_rho)
+    eig.Sigma <- eigen(Cor, symmetric=TRUE)
+    V <- eig.Sigma$vectors
+    d <- eig.Sigma$values
+  }
+  
+  ll<-foreach(i = 1:n.t, .combine = "c") %dopar% {
+    X.s.likelihood.conditional(X.s[,i], R[i], V, d)
+    # dmvn.eig(qnorm(1-R[i]/X.s[, i]), V = V, d.inv = 1/d)
+  }
+  
+  return(sum(ll))
+}
+# lam.gam.update.mixture.me.likelihood(R, c(0.5, 1), X.s, R, S)
+# lam.gam.update.mixture.me.likelihood(R, c(0.5, 1), X.s, R, S, V, d)
+
+#                                                                              #
+################################################################################
+
+
+
+################################################################################
+## For the generic Metropolis sampler
+## Samples from the scaling factors, for the scale 
+## mixture of Gaussians, where the   
+## mixing distribution comes from Huser-wadsworth scale mixture.
+##
+## data............................... a n.t vector of scaling factors
+## params............................. R[t]
+## X.s ............................... the latent Gaussian process, without the
+##                                     measurement error (vector)
+## V, d
+## delta
+##
+Rt.update.mixture.me.likelihood <- function(data, params, X.s, delta, 
+                                                 V=NULL, d=NULL) {
+  R <- data
+  Rt <- params
+  if(Rt < 1)  return(-Inf)
+  
+  ll <- X.s.likelihood.conditional(X.s, Rt, V, d)
+  return(as.vector(ll))
+}
+
+# Rt.update.mixture.me.likelihood(R, R[1], X.s[,1], delta, V, d)
+
+#                                                                              #
+################################################################################
 
 

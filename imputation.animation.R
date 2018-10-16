@@ -1,7 +1,7 @@
 
 source("~/Desktop/Research/scalemixture/scalemix_likelihoods.R")
-# source("scalemix_priors.R")
-# source("generic_samplers.R")
+source("~/Desktop/Research/scalemixture/scalemix_priors.R")
+source("~/Desktop/Research/scalemixture/generic_samplers.R")
 source("~/Desktop/Research/scalemixture/scalemix_utils.R")
 setwd("~/Desktop/Research/")
 
@@ -14,7 +14,7 @@ tau <-9      # Nugget SD
 delta <- 0.7      # For R
 lambda <- 0.5     # Powered exponential range
 gamma <-  1       # Powered exponential smoothness
-
+rho <- 0.1
 
 # Threshold for fitting
 thresh <- 11
@@ -22,7 +22,8 @@ thresh <- 11
 # Generate fake data
 
 S     <- cbind(seq(0, 1, length=n.s), rep(1, n.s))
-Cor   <- corr.fn(rdist(S), lambda = lambda, gamma = gamma)
+# Cor   <- corr.fn(rdist(S), lambda = lambda, gamma = gamma)
+Cor   <- corr.fn(rdist(S), log(rho))
 C.Cor <- chol(Cor)
 
 set.seed(3333)
@@ -122,6 +123,7 @@ par(mfrow=c(1, 1), mai=c(1.02,0.82,0.82,0.42))
 for (i in 1:n.updates) {
   for (k in 1:thin) {
     curr.draw <- X.star[ ,j]
+    # Should NOT have asked for X but we are using it here for proposal.
     X.star <- X.s.update.mixture.me.par(R, Y, X.imp, X.star, cen, 
                                     prob.below, theta.gpd, delta,
                                     tau, V, d, v.q=2, n.chain = 100, thresh.X = thresh.X)$X.s
