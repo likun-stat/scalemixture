@@ -353,7 +353,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
       # Sys.sleep(0.1)
       state <- list(Y=Y, cen=cen, S=S, thresh=thresh,
                     experiment.name="Huser-wadsworth",
-                    i=i, sigma.m=sigma.m, prop.Sigma=prop.Sigma, sd.trace=sd.trace,
+                    i=i, sigma.m=sigma.m, prop.Sigma=prop.Sigma, sd.ratio.trace=sd.ratio.trace,
                     X=X, X.s=X.s, theta.gpd=theta.gpd, prob.below=prob.below,
                     delta=delta, R=R, tau=tau, log.rho=log.rho)
       out.obj <- list(Y=Y, cen=cen, S=S, thresh=thresh,
@@ -367,7 +367,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
                       theta.gpd.trace=theta.gpd.trace,
                       # prob.below.trace=prob.below.trace,
                       R.trace=R.trace,
-                      sd.ratio.trace=sd.trace.trace)
+                      sd.ratio.trace=sd.ratio.trace)
       save(state, out.obj, file=sprintf("%s_progress_%1.1s.RData", experiment.name, save.bit))
       save.bit <- !save.bit
     }
