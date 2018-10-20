@@ -7,7 +7,7 @@ source("~/Desktop/Research/scalemixture/scalemix_likelihoods.R")
 ## Plot the CDF function
 delta <- 0.8
 tau <- 1   # Always variance = std^2
-x_vals <- seq(1.01, 20000000000, length = 10000)
+x_vals <- seq(1.01, 20, length = 10000)
 system.time(cdf_vals<-pmixture_me(x_vals, tau, delta))  #0.363
 plot(x_vals, cdf_vals, type="l")
 grid()
@@ -290,7 +290,7 @@ plot(1:90000, Res$trace[,1], type="l", xlab = "Index", ylab = expression(delta))
 abline(h=0.7, lty=2, col="red")
 
 
-# 2. lambda, delta (failed)
+# 2. lambda, gamma (failed)
 Res <- static.metr(z = R, starting.theta = c(lambda, gamma), 
     likelihood.fn = lam.gam.update.mixture.me.likelihood, prior.fn = lam.gam.prior,
     hyper.params = 2, n.updates = 90000, prop.Sigma = NULL, sigma.m=NULL, verbose=FALSE, 
@@ -307,12 +307,12 @@ plot(1:10000, Res$trace[,1], type="l", xlab = "Index", ylab = expression(lambda)
 plot(1:10000, Res$trace[,2], type="l", xlab = "Index", ylab = expression(gamma))
 
 
-# 2a. rho
+# 2a. rho (NA likelihood)
 Res <- adaptive.metr(z = R, starting.theta = log(rho),
-                     likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = log.rho.prior,
-                     hyper.params = 2, n.updates = 30000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = FALSE,
-                     r.opt = .234, c.0 = 10, c.1 = .8, K = 100,
-                     X.s = X.s, R = R, S = S)
+    likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = log.rho.prior,
+    hyper.params = 2, n.updates = 30000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = FALSE,
+    r.opt = .234, c.0 = 10, c.1 = .8, K = 100,
+    X.s = X.s, R = R, S = S)
 
 plot(1:30000, Res$trace[,1], type="l", xlab = "Index", ylab = expression(rho))
 abline(h=log(rho), lty=2, col="red")
@@ -355,3 +355,19 @@ Res <- adaptive.metr(z = R, starting.theta = R[t],
 
 plot(1:30000, Res$trace[1:30000,1], type="l", xlab = "Index", ylab = sprintf("R%i", t))
 abline(h=R[t], lty=2, col="red")
+
+
+
+## ------------- 12. Test giant scalemix_sampler that updates all parameter --------------
+# Save the input for function arguments
+initial.values <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
+n.updates <- 2
+thin <- 50
+echo.interval <- 50
+true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
+sigma.m=NULL; prop.Sigma=NULL
+experiment.name="Huser-wadsworth"
+
+save(Y, S, cen, thresh, initial.values, n.updates, thin, echo.interval, sigma.m, prop.Sigma, true.params, 
+     experiment.name, file="input.RData")
+load("input.RData")

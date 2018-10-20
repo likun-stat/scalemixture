@@ -239,7 +239,9 @@ static.metr <- function(z, starting.theta,
     prior.star <- prior.fn(theta.star, hyper.params)
     if (prior.star != -Inf) {
       likelihood.star <- likelihood.fn(z, theta.star, ...)
-
+      
+      if(is.na(likelihood.star)) likelihood.star <- -Inf
+      
       metr.ratio <- exp(prior.star + likelihood.star -
                         prior - likelihood)
       # if(is.na(metr.ratio)){

@@ -9,7 +9,7 @@ library(fields)   # For rdist
 # Simulation settings
 
 n.s <- 200        # Number of sites
-n.t <- 2          # Number of time points
+n.t <- 4          # Number of time points
 tau <-9      # Nugget SD
 delta <- 0.7      # For R
 lambda <- 0.5     # Powered exponential range

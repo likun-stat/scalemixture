@@ -1,5 +1,5 @@
 ################################################################################
-## The log likelihood of the data, where the data comes from a HOT scale mixture
+## The log likelihood of the data, where the data comes from a scale mixture
 ## of Gaussians, transformed to GPD (matrix/vector input)
 ##
 ## Y ................................. a (n.s x n.t) matrix of data that are
