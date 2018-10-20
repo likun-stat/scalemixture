@@ -8,7 +8,7 @@
 #PBS -N scalemixture
 
 module purge
-module load r/3.5
+module load r/3.4
 
 cd $PBS_O_WORKDIR/
 
