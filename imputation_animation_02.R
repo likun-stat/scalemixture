@@ -66,12 +66,12 @@ Y[!cen] <- scalemix.me.2.gpd(x = X[!cen], tau_sqd = tau, delta = delta, theta.gp
 
 ## --------------- 4. Running Metropolis -------------------
 initial.values <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
-n.updates <- 1200
+n.updates <- 4000
 thin <- 10
 echo.interval <- 50
 true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
 
-scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
+scalemix.sampler.01(Y=Y, S=S, cen=cen, thresh=thresh,
                                 initial.values=initial.values,
                                 n.updates=n.updates, thin=thin,
                                 experiment.name="Huser-wadsworth",

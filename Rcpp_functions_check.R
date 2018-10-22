@@ -362,7 +362,7 @@ abline(h=R[t], lty=2, col="red")
 # Save the input for function arguments
 initial.values <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
 n.updates <- 2
-thin <- 50
+thin <- 10
 echo.interval <- 50
 true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
 sigma.m=NULL; prop.Sigma=NULL
