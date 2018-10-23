@@ -92,7 +92,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   thresh.X <- qmixture.me.interp(p = prob.below, tau_sqd = tau, delta = delta)
   X <- Y
   X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd = tau, delta = delta, theta.gpd = theta.gpd, prob.below=prob.below)
-  # X[cen] <- update.censored.obs.mixture.me(X.s, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
+  X[cen] <- update.censored.obs.mixture.me(X.s, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
   
   # Initialize trace objects
   accepted <- rep(0, n.updates)
@@ -132,6 +132,8 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   # if (is.null(sigma.m$prob.below)) sigma.m$prob.below <- 1
   if (is.null(sigma.m$tau)) sigma.m$tau <- 2.4^2
   if (is.null(sigma.m$R)) sigma.m$R <- rep(2.4^2, n.t)
+  if (is.null(sigma.m$X.s)) sigma.m$X.s <- matrix(2.4^2,nrow=n.s,ncol=n.t)
+  
   r.hat.delta <- NA
   r.hat.rho <- NA
   r.hat.theta.gpd <- NA
@@ -149,24 +151,28 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
     ################################################################
     gamma1 <- c.0 / (i + k)^(c.1)
     gamma2 <- 1 / (i + k)^(c.1)
+    Accepted<-matrix(0, nrow=n.s, ncol=n.t) #For X.s
     
     for (j in 1:thin) {
     
     ################################################################
     ## Update X -- branching: use X.s
     ################################################################
-    X[cen] <- update.censored.obs.mixture.me(X.s = X.s, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
+    # X[cen] <- update.censored.obs.mixture.me(X.s = X.s, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
     X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd = tau, delta = delta, theta.gpd = theta.gpd, prob.below=prob.below)
 
     ################################################################
     ## Update X.star  *Parallel
     ################################################################
-    X.s.res <- X.s.update.mixture.me.par(R, Y, X, X.s, cen, 
-                                         prob.below, theta.gpd, delta,
-                                         tau, V, d, v.q=2, n.chain = 100, thresh.X = thresh.X)
+    # X.s.res <- X.s.update.mixture.me.par(R, Y, X, X.s, cen, 
+    #                                      prob.below, theta.gpd, delta,
+    #                                      tau, V, d, v.q=2, n.chain = 100, thresh.X = thresh.X)
+    X.s.res<-X.s.update.mixture.me.update.par.once.without.X(R, Y, X, X.s, cen,
+                                                            prob.below, theta.gpd, delta,
+                                                            tau, V, d, v.q=sigma.m$X.s, thresh.X=thresh.X)
     X.s <- X.s.res$X.s
-    X.s.accept <- X.s.res$accepted
-    
+    X.s.accept <- apply(X.s.res$accepted==1,2,any)
+    Accepted <- Accepted + X.s.res$accepted
     
     
     ################################################################
@@ -284,6 +290,11 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
     prop.Sigma$theta.gpd <-  matrix(c(1, prop.Sigma$gpd.corr/sd.ratio, prop.Sigma$gpd.corr/sd.ratio, 1/sd.ratio^2), 2, 2)
 
    
+    # ---------------- Adapt sigma.m$X.s ------------------
+    r.hat.X.s <- Accepted/thin
+    sigma.m$X.s <- exp(log(sigma.m$X.s) + gamma1*(r.hat.X.s - metr.opt.1d))
+    
+    
     
     # ------------------------- Fill in trace objects ---------------------------
     X.s.trace[i, , ] <- X.s
@@ -410,7 +421,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   # Hyper parameters for the prior of the mixing distribution parameters and 
   # the correlation parameters
   hyper.params.delta <- 1
-  hyper.params.rho <- 2
+  hyper.params.rho <- 1
   hyper.params.theta.gpd <- 0
   hyper.params.tau <- c(0.1,0.1)
   # hyper.params.prob.below <- c(0, 10)

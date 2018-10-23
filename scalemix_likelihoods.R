@@ -2,6 +2,8 @@
 ## The log likelihood of the data, where the data comes from a scale mixture
 ## of Gaussians, transformed to GPD (matrix/vector input)
 ##
+## NOT ACTUALLY depending on X, just calculated Fx^-1(Fy(Y)) ahead of time
+##
 ## Y ................................. a (n.s x n.t) matrix of data that are
 ##                                     marginally GPD, and conditionally
 ##                                     independent given X(s)
@@ -241,57 +243,52 @@ X.s.update.mixture.me.par <- function(R, Y, X, X.s, cen,
 }
 
 
-X.s.update.mixture.me.par.norm.prop <- function(R, Y, X, X.s, cen, 
-                                      prob.below, theta.gpd, delta,
-                                      tau_sqd, V, d, v.q=1, n.chain=100,
-                                      thresh.X=NULL) {
-  
+X.s.update.mixture.me.update.par.once.without.X <- function(R, Y, X, X.s, cen,
+                                                            prob.below, theta.gpd, delta,
+                                                            tau_sqd, V, d, v.q=NULL, 
+                                                            thresh.X=NULL){
   library(doParallel)
   library(foreach)
   n.s <- nrow(Y)
   n.t <- ncol(Y)
   registerDoParallel(cores=n.t)
   
-  accepted <- rep(FALSE, n.t)  
+  accepted <- matrix(0,nrow=n.s, ncol=n.t) 
+  if(is.null(v.q)) v.q<-matrix(2.4^2,nrow=n.s, ncol=n.t)
   
+  if(is.null(thresh.X)) thresh.X <- qmixture.me.interp(p = prob.below, tau_sqd = tau_sqd, delta = delta)
   
-  if (is.null(thresh.X)) thresh.X <- qmixture.me.interp(p = prob.below, tau_sqd = tau_sqd, delta = delta)
-  
-  Res <- foreach (t = 1:n.t, .combine = "cbind") %dopar% {
-    # Proposal
-    # Treat the X process as the response, ignoring the marginal transformation
-    # i.e. prop.X.s ~ X.s | X, R, other.params
-    regularized.d.inv <- 1/d * 1/R[t]^2 + 1/tau_sqd
-    prop.mean <- eig2inv.times.vector(V, 1/regularized.d.inv, X[ ,t]) / tau_sqd
-    prop.X.s <- prop.mean + eig2inv.times.vector(V, v.q/sqrt(regularized.d.inv), rnorm(n.s))
-    
-    res <- c(X.s[,t],0)
-    
-    # M-H ratio    
-    log.rat <- 
-      dmvn.eig(X.s[ ,t] - prop.mean, V, regularized.d.inv/v.q^2) + # Prop density of current value
-      marg.transform.data.mixture.me.likelihood(Y[ ,t], X[ ,t], prop.X.s,               # Likelihood of proposal
-                                                cen[ ,t], prob.below,
-                                                theta.gpd, delta,
-                                                tau_sqd, thresh.X=thresh.X) +
-      X.s.likelihood.conditional(prop.X.s, R[t], V, d) -                                # Likelihood of proposal
-      dmvn.eig(prop.X.s - prop.mean, V, regularized.d.inv/v.q^2) - # Prop density of proposal
-      marg.transform.data.mixture.me.likelihood(Y[ ,t], X[ ,t], X.s[ ,t],               # Likelihood of current value
-                                                cen[ ,t], prob.below,
-                                                theta.gpd, delta,
-                                                tau_sqd, thresh.X=thresh.X) -
-      X.s.likelihood.conditional(X.s[ ,t], R[t], V, d)                                  # Likelihood of current value
-    
-    
-    
-    
-    if (runif(1) < exp(log.rat)) {
-      res<-c(prop.X.s,1)
+  for(iter in 1:n.s){
+    Res<-foreach(t = 1:n.t, .combine = "cbind")%dopar%{
+      prop.X.s<-X.s[ ,t]
+      prop.X.s[iter]<-X.s[iter,t]+rnorm(1,0,sd=v.q[iter,t])
+      res<-c(X.s[,t],0)
+      
+      # M-H ratio    
+      log.rat <- 
+        marg.transform.data.mixture.me.likelihood(Y[ ,t], X[ ,t], prop.X.s,               # Likelihood of proposal
+                                                  cen[ ,t], prob.below,
+                                                  theta.gpd, delta,
+                                                  tau_sqd, thresh.X=thresh.X) +
+        X_s_likelihood_conditional(prop.X.s, R[t], V, d) -                                # Likelihood of proposal
+        marg.transform.data.mixture.me.likelihood(Y[ ,t], X[ ,t], X.s[ ,t],               # Likelihood of current value
+                                                  cen[ ,t], prob.below,
+                                                  theta.gpd, delta,
+                                                  tau_sqd, thresh.X=thresh.X) -
+        X_s_likelihood_conditional(X.s[ ,t], R[t], V, d)                                  # Likelihood of current value
+      
+      if(is.na(log.rat)) log.rat<- -Inf
+      if(runif(1) < exp(log.rat)){
+        res<-c(prop.X.s,1)
+      }
+      res
     }
-    res
+    
+    X.s<-Res[1:n.s, ]
+    accepted[iter,]<-Res[n.s+1,]
   }
   
-  return(list(X.s=Res[1:n.s, ], accepted=Res[n.s+1, ]))
+  return(list(X.s=X.s, accepted=accepted))
 }
 
 

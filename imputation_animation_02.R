@@ -20,7 +20,7 @@ thresh <- 11
 
 
 # -------------- 2. Generate fake data -----------------
-S     <- cbind(seq(0, 1, length=n.s), rep(1, n.s))
+S     <- cbind(seq(0, 1, length=n.s), seq(0, 1, length=n.s))
 # Cor   <- corr.fn(rdist(S), lambda = lambda, gamma = gamma)
 Cor   <- corr.fn(rdist(S), rho)
 C.Cor <- chol(Cor)
