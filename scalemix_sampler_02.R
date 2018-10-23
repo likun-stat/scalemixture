@@ -51,7 +51,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   # Hyper parameters for the prior of the mixing distribution parameters and 
   # the correlation parameters
   hyper.params.delta <- 1
-  hyper.params.rho <- 2
+  hyper.params.rho <- 1
   hyper.params.theta.gpd <- 0
   hyper.params.tau <- c(0.1,0.1)
   # hyper.params.prob.below <- c(0, 10)
@@ -68,7 +68,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   
   # Load initial values
   delta <- initial.values$delta
-  log.rho <- log(initial.values$rho)
+  rho <- initial.values$rho
   tau <- initial.values$tau
   scale <- initial.values$theta.gpd[2]
   shape <- initial.values$theta.gpd[3]
@@ -83,7 +83,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   
   
   #**********   Eigendecomposition of the correlation matrix   ****************#
-  Sigma <- corr.fn(h, log.rho)
+  Sigma <- corr.fn(h, rho)
   eig.Sigma <- eigen(Sigma, symmetric=TRUE)
   V <- eig.Sigma$vectors
   d <- eig.Sigma$values
@@ -100,7 +100,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   X.s.trace <- array(NA, dim=c(n.updates, n.s, n.t))
   X.trace <- array(NA, dim=c(n.updates, n.s, n.t))
   X.s.accept.trace <- matrix(NA, n.updates, n.t)
-  log.rho.trace <- rep(NA, n.updates)
+  rho.trace <- rep(NA, n.updates)
   tau.trace <- rep(NA, n.updates)
   delta.trace <- rep(NA, n.updates)
   theta.gpd.trace <- matrix(NA, n.updates, 2)
@@ -116,7 +116,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   X.s.trace[1, , ] <- X.s
   X.trace[1, , ] <- X
   X.s.accept.trace[1, ] <- X.s.accept
-  log.rho.trace[1] <- log.rho
+  rho.trace[1] <- rho
   tau.trace[1] <- tau
   delta.trace[1] <- delta
   theta.gpd.trace[1, ] <- theta.gpd[c(2,3)]
@@ -126,12 +126,12 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   sd.ratio.trace[1] <- prop.Sigma$theta.gpd[2, 2]
   
   # For tuning Metropolis updates of theta
-  if (is.null(sigma.m$delta)) sigma.m$delta <- 1
-  if (is.null(sigma.m$rho)) sigma.m$rho <- 1
-  if (is.null(sigma.m$theta.gpd)) sigma.m$theta.gpd <- 1
+  if (is.null(sigma.m$delta)) sigma.m$delta <- 2.4^2
+  if (is.null(sigma.m$rho)) sigma.m$rho <- 2.4^2
+  if (is.null(sigma.m$theta.gpd)) sigma.m$theta.gpd <- (2.4/2)^2
   # if (is.null(sigma.m$prob.below)) sigma.m$prob.below <- 1
-  if (is.null(sigma.m$tau)) sigma.m$tau <- 1
-  if (is.null(sigma.m$R)) sigma.m$R <- rep(1, n.t)
+  if (is.null(sigma.m$tau)) sigma.m$tau <- 2.4^2
+  if (is.null(sigma.m$R)) sigma.m$R <- rep(2.4^2, n.t)
   r.hat.delta <- NA
   r.hat.rho <- NA
   r.hat.theta.gpd <- NA
@@ -174,17 +174,17 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
     ################################################################
     
     
-    metr.out.rho <- static.metr(z = R, starting.theta = log.rho,
-                                likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = log.rho.prior,
+    metr.out.rho <- static.metr(z = R, starting.theta = rho,
+                                likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = rho.prior,
                                 hyper.params = hyper.params.rho, n.updates = n.metr.updates.rho, prop.Sigma = 1, sigma.m=sigma.m$rho, verbose=FALSE,
                                 X.s = X.s, R = R, S = S)
     r.hat.rho <- metr.out.rho$acc.prob
-    log.rho <- metr.out.rho$trace[n.metr.updates.rho]
+    rho <- metr.out.rho$trace[n.metr.updates.rho]
     sigma.m$rho <- exp(log(sigma.m$rho) + gamma1*(r.hat.rho - metr.opt.1d))
     
         
     ## Re-create covariance matrix and eigenvectors/eigenvalues
-    Sigma   <- corr.fn(h, log.rho)
+    Sigma   <- corr.fn(h, rho)
     eig.Sigma <- eigen(Sigma, symmetric=TRUE)
     V <- eig.Sigma$vectors
     d <- eig.Sigma$values
@@ -289,7 +289,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
     X.s.trace[i, , ] <- X.s
     X.trace[i, , ] <- X
     X.s.accept.trace[i, ] <- X.s.accept
-    log.rho.trace[i] <- log.rho
+    rho.trace[i] <- rho
     tau.trace[i] <- tau
     delta.trace[i] <- delta
     theta.gpd.trace[i, ] <- theta.gpd[c(2,3)]
@@ -305,8 +305,8 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
       cat(" Acceptance rate for X^* is", mean(X.s.accept.trace[(i-echo.interval):i, ]), "\n")
       pdf(file=sprintf("%s_progress.pdf", experiment.name))
       par(mfrow=c(3,2))
-      plot(log.rho.trace, type="l", ylab=expression(rho))
-      if (!is.null(true.params)) abline(h=log(true.params$rho), lty=2, col=2, lwd=3)
+      plot(rho.trace, type="l", ylab=expression(rho))
+      if (!is.null(true.params)) abline(h=true.params$rho, lty=2, col=2, lwd=3)
       plot(tau.trace, type="l", ylab=expression(tau^2))
       if (!is.null(true.params)) abline(h=true.params$tau, lty=2, col=2, lwd=3)
       plot(delta.trace, type="l", ylab=expression(delta))
@@ -355,13 +355,13 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
                     experiment.name="Huser-wadsworth",
                     i=i, sigma.m=sigma.m, prop.Sigma=prop.Sigma, sd.ratio.trace=sd.ratio.trace,
                     X=X, X.s=X.s, theta.gpd=theta.gpd, prob.below=prob.below,
-                    delta=delta, R=R, tau=tau, log.rho=log.rho)
+                    delta=delta, R=R, tau=tau, rho=rho)
       out.obj <- list(Y=Y, cen=cen, S=S, thresh=thresh,
                       i=i,
                       X.s.trace=X.s.trace,
                       X.trace=X.trace,
                       X.s.accept.trace=X.s.accept.trace,
-                      log.rho.trace=log.rho.trace,
+                      rho.trace=rho.trace,
                       tau.trace=tau.trace,
                       delta.trace=delta.trace,
                       theta.gpd.trace=theta.gpd.trace,
@@ -427,7 +427,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   
   # Load initial values
   delta <- initial.values$delta
-  log.rho <- log(initial.values$rho)
+  rho <- initial.values$rho
   tau <- initial.values$tau
   scale <- initial.values$theta.gpd[2]
   shape <- initial.values$theta.gpd[3]
@@ -442,7 +442,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   
   
   #**********   Eigendecomposition of the correlation matrix   ****************#
-  Sigma <- corr.fn(h, log.rho)
+  Sigma <- corr.fn(h, rho)
   eig.Sigma <- eigen(Sigma, symmetric=TRUE)
   V <- eig.Sigma$vectors
   d <- eig.Sigma$values
@@ -459,7 +459,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   X.s.trace <- array(NA, dim=c(n.updates, n.s, n.t))
   X.trace <- array(NA, dim=c(n.updates, n.s, n.t))
   X.s.accept.trace <- matrix(NA, n.updates, n.t)
-  log.rho.trace <- rep(NA, n.updates)
+  rho.trace <- rep(NA, n.updates)
   tau.trace <- rep(NA, n.updates)
   delta.trace <- rep(NA, n.updates)
   theta.gpd.trace <- matrix(NA, n.updates, 2)
@@ -475,7 +475,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   X.s.trace[1, , ] <- X.s
   X.trace[1, , ] <- X
   X.s.accept.trace[1, ] <- X.s.accept
-  log.rho.trace[1] <- log.rho
+  rho.trace[1] <- rho
   tau.trace[1] <- tau
   delta.trace[1] <- delta
   theta.gpd.trace[1, ] <- theta.gpd[c(2,3)]
@@ -534,17 +534,17 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
       ################################################################
       
       
-      metr.out.rho <- static.metr(z = R, starting.theta = log.rho,
-                                  likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = log.rho.prior,
+      metr.out.rho <- static.metr(z = R, starting.theta = rho,
+                                  likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = rho.prior,
                                   hyper.params = hyper.params.rho, n.updates = n.metr.updates.rho, prop.Sigma = 1, sigma.m=sigma.m$rho, verbose=FALSE,
                                   X.s = X.s, R = R, S = S)
       r.hat.rho <- metr.out.rho$acc.prob
-      log.rho <- metr.out.rho$trace[n.metr.updates.rho]
+      rho <- metr.out.rho$trace[n.metr.updates.rho]
       sigma.m$rho <- exp(log(sigma.m$rho) + gamma1*(r.hat.rho - metr.opt.1d))
       
       
       ## Re-create covariance matrix and eigenvectors/eigenvalues
-      Sigma   <- corr.fn(h, log.rho)
+      Sigma   <- corr.fn(h, rho)
       eig.Sigma <- eigen(Sigma, symmetric=TRUE)
       V <- eig.Sigma$vectors
       d <- eig.Sigma$values
@@ -640,7 +640,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
     X.s.trace[i, , ] <- X.s
     X.trace[i, , ] <- X
     X.s.accept.trace[i, ] <- X.s.accept
-    log.rho.trace[i] <- log.rho
+    rho.trace[i] <- rho
     tau.trace[i] <- tau
     delta.trace[i] <- delta
     theta.gpd.trace[i, ] <- theta.gpd[c(2,3)]
@@ -656,8 +656,8 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
       cat(" Acceptance rate for X^* is", mean(X.s.accept.trace[(i-echo.interval):i, ]), "\n")
       pdf(file=sprintf("%s_progress.pdf", experiment.name))
       par(mfrow=c(3,2))
-      plot(log.rho.trace, type="l", ylab=expression(rho))
-      if (!is.null(true.params)) abline(h=log(true.params$rho), lty=2, col=2, lwd=3)
+      plot(rho.trace, type="l", ylab=expression(rho))
+      if (!is.null(true.params)) abline(h=true.params$rho, lty=2, col=2, lwd=3)
       plot(tau.trace, type="l", ylab=expression(tau^2))
       if (!is.null(true.params)) abline(h=true.params$tau, lty=2, col=2, lwd=3)
       plot(delta.trace, type="l", ylab=expression(delta))
@@ -706,13 +706,13 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
                     experiment.name="Huser-wadsworth",
                     i=i, sigma.m=sigma.m, prop.Sigma=prop.Sigma,
                     X=X, X.s=X.s, theta.gpd=theta.gpd, prob.below=prob.below,
-                    delta=delta, R=R, tau=tau, log.rho=log.rho)
+                    delta=delta, R=R, tau=tau, rho=rho)
       out.obj <- list(Y=Y, cen=cen, S=S, thresh=thresh,
                       i=i,
                       X.s.trace=X.s.trace,
                       X.trace=X.trace,
                       X.s.accept.trace=X.s.accept.trace,
-                      log.rho.trace=log.rho.trace,
+                      rho.trace=rho.trace,
                       tau.trace=tau.trace,
                       delta.trace=delta.trace,
                       theta.gpd.trace=theta.gpd.trace,
@@ -730,6 +730,5 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   
 }
 
-  
-  
-  
+
+

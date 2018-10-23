@@ -529,10 +529,10 @@ rho.update.mixture.me.likelihood <- function(data, params, X.s, R, S,
   registerDoParallel(cores=n.t)
   
   R <- data
-  log_rho <- params
+  rho <- params
 
   if(is.null(V)){
-    Cor   <- corr.fn(rdist(S), theta = log_rho)
+    Cor   <- corr.fn(rdist(S), rho = rho)
     eig.Sigma <- eigen(Cor, symmetric=TRUE)
     V <- eig.Sigma$vectors
     d <- eig.Sigma$values

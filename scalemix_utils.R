@@ -39,9 +39,15 @@ pow<-function(x,y){
 #   return(Sigma)
 # }
 
-corr.fn <- function(d, theta) {
-  
-  rho <- exp(theta[1])
+# corr.fn <- function(d, theta) {
+#   
+#   rho <- exp(theta[1])
+#   
+#   Sigma <- (1 + d/rho) * exp(-d/rho) 
+#   return(Sigma)
+# }
+
+corr.fn <- function(d, rho) {
   
   Sigma <- (1 + d/rho) * exp(-d/rho) 
   return(Sigma)

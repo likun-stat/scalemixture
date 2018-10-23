@@ -23,7 +23,7 @@ thresh <- 11
 
 S     <- cbind(seq(0, 1, length=n.s), rep(1, n.s))
 # Cor   <- corr.fn(rdist(S), lambda = lambda, gamma = gamma)
-Cor   <- corr.fn(rdist(S), log(rho))
+Cor   <- corr.fn(rdist(S), rho)
 C.Cor <- chol(Cor)
 
 set.seed(3333)

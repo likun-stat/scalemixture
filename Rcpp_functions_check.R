@@ -308,8 +308,8 @@ plot(1:10000, Res$trace[,2], type="l", xlab = "Index", ylab = expression(gamma))
 
 
 # 2a. rho (NA likelihood)
-Res <- adaptive.metr(z = R, starting.theta = log(rho),
-    likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = log.rho.prior,
+Res <- adaptive.metr(z = R, starting.theta = rho,
+    likelihood.fn = rho.update.mixture.me.likelihood, prior.fn = rho.prior,
     hyper.params = 2, n.updates = 30000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = FALSE,
     r.opt = .234, c.0 = 10, c.1 = .8, K = 100,
     X.s = X.s, R = R, S = S)

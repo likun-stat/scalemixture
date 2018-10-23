@@ -148,5 +148,14 @@ log.rho.prior <- function(params, hyper.params) {
   
   return(0)
 }
+
+rho.prior <- function(params, hyper.params) {
+  rho <- params
+  scale <- hyper.params
+
+  if (rho<0) return(-Inf)
+  return(log(2) + dcauchy(rho, scale=scale, log=TRUE))
+}
+
 #                                                                              #
 ################################################################################

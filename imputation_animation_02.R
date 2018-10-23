@@ -22,7 +22,7 @@ thresh <- 11
 # -------------- 2. Generate fake data -----------------
 S     <- cbind(seq(0, 1, length=n.s), rep(1, n.s))
 # Cor   <- corr.fn(rdist(S), lambda = lambda, gamma = gamma)
-Cor   <- corr.fn(rdist(S), log(rho))
+Cor   <- corr.fn(rdist(S), rho)
 C.Cor <- chol(Cor)
 
 set.seed(3333)
@@ -71,7 +71,7 @@ thin <- 10
 echo.interval <- 50
 true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
 
-scalemix.sampler.01(Y=Y, S=S, cen=cen, thresh=thresh,
+scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
                                 initial.values=initial.values,
                                 n.updates=n.updates, thin=thin,
                                 experiment.name="Huser-wadsworth",
