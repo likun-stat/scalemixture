@@ -399,5 +399,191 @@ NumericVector find_xrange_pmixture_me(double min_p, double max_p,
 
 
 
+// -------------------------------------------------------------------------- //
+// Update X.s one by one using full conditional without the information of X
+// [[Rcpp::export]]
+double d_gpd_uni(double x, double loc, double scale, double shape, bool islog = true){
+    double tm1 = 1/scale, tml1 = -log(scale);
+    double tm2 = shape/scale;
+    double tm3 = -1/shape-1;
+    double res;
+    
+    if(abs(shape)>1e-09){
+        if(!islog){
+            res = tm1*pow(1+tm2*(x-loc), tm3);
+        }
+        else{
+            res = tml1+tm3*log(1+tm2*(x-loc));
+        }
+    } else{
+        if(!islog){
+            res = exp((loc-x)/scale);
+        }
+        else{
+            res = (loc-x)/scale;
+        }
+    }
+    
+    return res;
+}
+
+// [[Rcpp::export]]
+NumericVector d_gpd(NumericVector x, double loc, double scale, double shape, bool islog = true){
+    int n = x.size();
+    NumericVector resultVec(n);
+    double tm1 = 1/scale, tml1 = -log(scale);
+    double tm2 = shape/scale;
+    double tm3 = -1/shape-1;
+    
+    if(abs(shape)>1e-09){
+        if(!islog){
+            for(int i=0; i<n; i++){
+                resultVec[i] = tm1*pow(1+tm2*(x[i]-loc), tm3);
+            }
+        }
+        else{
+            for(int i=0; i<n; i++){
+                resultVec[i] = tml1+tm3*log(1+tm2*(x[i]-loc));
+            }
+        }
+    } else{
+        if(!islog){
+            for(int i=0; i<n; i++){
+                resultVec[i] = exp((loc-x[i])/scale);
+            }
+        }
+        else{
+            for(int i=0; i<n; i++){
+                resultVec[i] = (loc-x[i])/scale;
+            }
+        }
+    }
+    
+    return resultVec;
+}
+
+
+// NOTE: thresh_X is required
+// [[Rcpp::export]]
+double marg_transform_data_mixture_me_likelihood(NumericVector Y, NumericVector X, NumericVector X_s,
+                                                 LogicalVector cen, double prob_below,
+                                                 NumericVector theta_gpd, double delta,
+                                                 double tau_sqd, double thresh_X){     //time consuming
+    NumericVector ll(Y.size());
+    int size_Y = Y.size();
+    double loc = theta_gpd[0], scale = theta_gpd[1], shape = theta_gpd[2];
+    NumericVector tmp(1), res(1);
+    double temp;
+    
+    for(int i=0; i<size_Y; i++){
+        if(cen[i] == TRUE){
+            ll[i] = R::pnorm(thresh_X, X_s[i], sqrt(tau_sqd), 1, 1);
+        }
+        else{
+            tmp[0] = X[i]; temp = Y[i];
+            res = dmixture_me(tmp, tau_sqd, delta);
+            ll(i) = R::dnorm(X[i], X_s[i], sqrt(tau_sqd), 1)+ d_gpd_uni(temp, loc, scale, shape, true) -log(res[0]);
+            if(!std::isfinite(ll(i))) ll(i) = -std::numeric_limits<double>::infinity();
+        }
+    }
+    
+    return sum(ll);
+}
+
+// NOTE: thresh_X is required
+// [[Rcpp::export]]
+double marg_transform_data_mixture_me_likelihood_uni(double Y, double X, double X_s,
+                                                 bool cen, double prob_below,
+                                                 NumericVector theta_gpd, double delta,
+                                                 double tau_sqd, double thresh_X){     //time consuming
+    
+    double loc = theta_gpd[0], scale = theta_gpd[1], shape = theta_gpd[2];
+    NumericVector tmp(1), res(1);
+    double ll;
+    
+    if(cen == TRUE){
+        ll = R::pnorm(thresh_X, X_s, sqrt(tau_sqd), 1, 1);
+    }
+    else{
+        tmp[0] = X;
+        res = dmixture_me(tmp, tau_sqd, delta);
+        ll = R::dnorm(X, X_s, sqrt(tau_sqd), 1)+ d_gpd_uni(Y, loc, scale, shape, true) -log(res[0]);
+        if(!std::isfinite(ll)) ll = -std::numeric_limits<double>::infinity();
+    }
+    
+    return ll;
+}
+
+// [[Rcpp::export()]]
+double eig2inv_quadform_vector_cpp (NumericMatrix V, NumericVector d_inv, NumericVector x) {
+    int nrow = V.nrow();
+    
+    NumericVector VtX(nrow);
+    for(int c=0; c<nrow; c++){
+        for(int r=0; r<nrow; r++){
+            VtX[c] = VtX[c] + V(r,c)*x(r);
+        }
+    }
+    
+    double res = 0;
+    for(int i =0; i<nrow; i++){
+        res += d_inv(i)*VtX(i)*VtX(i);
+    }
+    
+    return res;
+}
+
+// [[Rcpp::export()]]
+double X_s_likelihood_conditional_cpp(NumericVector X_s, double R, NumericMatrix V, NumericVector d){
+    NumericVector tmp = 1-R/X_s;
+    for(int i=0; i<tmp.size(); i++){
+        tmp(i) = R::qnorm(tmp(i),0,1,1,0);
+    }
+    
+    double part1 = -0.5*eig2inv_quadform_vector_cpp(V, 1/d, tmp);
+    double part2 = 0.5*sum(tmp*tmp)-2*sum(log(X_s));
+    
+    return part1+part2;
+}
+
+
+// NOTE: thresh_X is required
+// [[Rcpp::export()]]
+List update_X_s_onetime (NumericVector Y, NumericVector X, NumericVector X_s,
+                         LogicalVector cen, double prob_below,
+                         NumericVector theta_gpd, double delta,
+                         double tau_sqd, double thresh_X,
+                         NumericVector v_q,  double R, NumericMatrix V, NumericVector d){
+    
+    int n_s = X.size();
+    NumericVector prop_X_s(n_s);
+    NumericVector accept(n_s);
+    
+    double log_num=0, log_denom=0, r=0, temp;
+    for(int iter=0; iter<n_s; iter++){
+        // tripped : NumericVector X=Y, changing X will change Y as well.
+        std::copy(X_s.begin(), X_s.end(), prop_X_s.begin());
+        temp = X_s(iter)+v_q(iter)*R::rnorm(0,1);
+        prop_X_s(iter) = temp;
+        log_num = marg_transform_data_mixture_me_likelihood_uni(Y(iter), X(iter), prop_X_s(iter), cen(iter), prob_below, theta_gpd, delta, tau_sqd, thresh_X) + X_s_likelihood_conditional_cpp(prop_X_s, R, V, d);
+        log_denom = marg_transform_data_mixture_me_likelihood_uni(Y(iter), X(iter), X_s(iter), cen(iter), prob_below, theta_gpd, delta, tau_sqd, thresh_X) + X_s_likelihood_conditional_cpp(X_s, R, V, d);
+        
+        r = exp(log_num - log_denom);
+        if(!std::isfinite(r)) r = 0;
+        
+        if(R::runif(0,1)<r){
+            X_s(iter) = temp;
+            accept(iter) = accept(iter) + 1;
+        }
+    }
+    
+    List result;
+    result["X.s"] = X_s;
+    result["accept"] = accept;
+    
+    return result;
+}
+
+// -------------------------------------------------------------------------- //
 
 

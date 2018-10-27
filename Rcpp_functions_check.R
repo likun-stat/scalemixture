@@ -371,3 +371,45 @@ experiment.name="Huser-wadsworth"
 save(Y, S, cen, thresh, initial.values, n.updates, thin, echo.interval, sigma.m, prop.Sigma, true.params, 
      experiment.name, file="input.RData")
 load("input.RData")
+
+
+
+## ------------- 13. Update X.s in Rcpp --------------
+dgpd(c(12,13,14), loc=11, scale=1, shape=0, log=TRUE)
+d_gpd(c(12,13,14), loc=11, scale=1, shape=0, islog=TRUE)
+
+dgpd(c(123,135,146), loc=11, scale=1, shape=2, log=TRUE)
+d_gpd(c(123,135,146), loc=11, scale=1, shape=2, islog=TRUE)
+
+ptm=proc.time()
+marg.transform.data.mixture.me.likelihood(Y, X, X.s, cen, prob.below,
+                                                      theta.gpd, delta,
+                                                      tau, thresh.X=thresh.X)
+proc.time()-ptm
+
+ptm=proc.time()
+marg_transform_data_mixture_me_likelihood(as.vector(Y), as.vector(X), as.vector(X.s), as.vector(cen), prob.below,
+                                              theta.gpd, delta,
+                                              tau, thresh_X=thresh.X)
+proc.time()-ptm
+
+t<-2; tau_sqd<-9
+res<- update_X_s_onetime(Y[,t], X[,t], X.s[,t], cen[,t], prob.below, theta.gpd, delta, tau_sqd, thresh.X, v.q[,t], R[t], V, d)
+res
+
+plot(X.s[,t],type="b",col="red")
+points(res$X.s, type='b', col="blue")
+
+ptm=proc.time()
+X.s.res<-X.s.update.mixture.me.update.par.once.without.X.par(R, Y, X, X.s, cen,
+                                                         prob.below, theta.gpd, delta,
+                                                         tau, V, d, v.q=sigma.m$X.s, thresh.X=thresh.X)
+proc.time()-ptm   #0.362
+colSums(X.s.res$accepted)
+
+ptm=proc.time()
+X.s.res<-X.s.update.mixture.me.update.par.once.without.X(R, Y, X, X.s, cen,
+                                                            prob.below, theta.gpd, delta,
+                                                            tau, V, d, v.q=sigma.m$X.s, thresh.X=thresh.X)
+proc.time()-ptm   #16.651
+colSums(X.s.res$accepted)

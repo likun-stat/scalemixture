@@ -167,7 +167,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
     # X.s.res <- X.s.update.mixture.me.par(R, Y, X, X.s, cen, 
     #                                      prob.below, theta.gpd, delta,
     #                                      tau, V, d, v.q=2, n.chain = 100, thresh.X = thresh.X)
-    X.s.res<-X.s.update.mixture.me.update.par.once.without.X(R, Y, X, X.s, cen,
+    X.s.res<-X.s.update.mixture.me.update.par.once.without.X.par(R, Y, X, X.s, cen,
                                                             prob.below, theta.gpd, delta,
                                                             tau, V, d, v.q=sigma.m$X.s, thresh.X=thresh.X)
     X.s <- X.s.res$X.s
