@@ -495,7 +495,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   # prob.below.trace[1] <- prob.below
   R.trace[1, ] <- R
   if(is.null(prop.Sigma$delta.gpd))  prop.Sigma$delta.gpd<-diag(3)
-  sd.ratio.trace[1] <- prop.Sigma$theta.gpd[3, 3]
+  sd.ratio.trace[1] <- prop.Sigma$delta.gpd[3, 3]
   
   # For tuning Metropolis updates of theta
   # if (is.null(sigma.m$delta)) sigma.m$delta <- 2.4^2
@@ -608,8 +608,8 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
                                         hyper.params = hyper.params.delta.gpd, n.updates = n.metr.updates.delta.gpd, prop.Sigma = prop.Sigma$delta.gpd, sigma.m=sigma.m$delta.gpd, verbose=FALSE, 
                                         Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, tau_sqd = tau, loc = thresh)
       
-      delta <- metr.out.delta.gpd$trace[n.metr.updates.theta.gpd, 1]
-      theta.gpd[c(2,3)] <- metr.out.delta.gpd$trace[n.metr.updates.theta.gpd, 2:3]
+      delta <- metr.out.delta.gpd$trace[n.metr.updates.delta.gpd, 1]
+      theta.gpd[c(2,3)] <- metr.out.delta.gpd$trace[n.metr.updates.delta.gpd, 2:3]
       r.hat.delta.gpd <- metr.out.delta.gpd$acc.prob
       sigma.m$delta.gpd <- exp(log(sigma.m$delta.gpd) + gamma1*(r.hat.delta.gpd - metr.opt.3d))
       prop.Sigma$delta.gpd <- prop.Sigma$delta.gpd + gamma2*(cov(metr.out.delta.gpd$trace)-prop.Sigma$delta.gpd)
