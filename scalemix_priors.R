@@ -172,3 +172,23 @@ rho.prior <- function(params, hyper.params) {
 
 #                                                                              #
 ################################################################################
+
+
+################################################################################
+#  Computes a uniform (0, 1) for delta, a half Cauchy densities with scale     #
+#  of the params, and a uniform(-0.5, 0.5) for the shape  .                    #
+
+delta.gpd.prior <- function(params, hyper.params) {
+  delta <- params[1]
+  scale <- params[2]
+  shape <- params[3]
+  scale.theta.1 <- hyper.params[1]
+  
+  if((delta<0) | (delta>1)) return(-Inf)
+  if (scale < 0) return(-Inf)
+  if ((shape < -0.5) | (shape > 0.5)) return(-Inf)
+  return(log(2) + dcauchy(scale, scale=scale.theta.1, log=TRUE))
+}
+
+#                                                                              #
+################################################################################

@@ -52,7 +52,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   # the correlation parameters
   hyper.params.delta <- 1
   hyper.params.rho <- 1
-  hyper.params.theta.gpd <- 0
+  hyper.params.theta.gpd <- 1
   hyper.params.tau <- c(0.1,0.1)
   # hyper.params.prob.below <- c(0, 10)
   
@@ -404,25 +404,27 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   
   # Constants to control how many Metropolis steps get executed at each
   # iteration of the main loop
-  n.metr.updates.delta <- 20
-  n.metr.updates.rho <- 20
-  n.metr.updates.theta.gpd <- 20
-  n.metr.updates.prob.below <- 20
-  n.metr.updates.tau <- 20
-  n.metr.updates.R <- 20
+  # n.metr.updates.delta <- 2
+  n.metr.updates.rho <- 2
+  n.metr.updates.delta.gpd <- 10
+  n.metr.updates.prob.below <- 4
+  n.metr.updates.tau <- 2
+  n.metr.updates.R <- 2
   
   # Constants to control adaptation of the Metropolis sampler
   c.0 <- 10
   c.1 <- 0.8
   k <- 3  # the iteration offset
-  metr.opt.1d <- 0.234
-  metr.opt.2d <- 0.234
+  metr.opt.1d <- 0.41
+  metr.opt.2d <- 0.35
+  metr.opt.3d <- 0.234
+  
   
   # Hyper parameters for the prior of the mixing distribution parameters and 
   # the correlation parameters
-  hyper.params.delta <- 1
+  # hyper.params.delta <- 1
   hyper.params.rho <- 1
-  hyper.params.theta.gpd <- 0
+  hyper.params.delta.gpd <- 1
   hyper.params.tau <- c(0.1,0.1)
   # hyper.params.prob.below <- c(0, 10)
   
@@ -462,7 +464,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   thresh.X <- qmixture.me.interp(p = prob.below, tau_sqd = tau, delta = delta)
   X <- Y
   X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd = tau, delta = delta, theta.gpd = theta.gpd, prob.below=prob.below)
-  # X[cen] <- update.censored.obs.mixture.me(X.s, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
+  X[cen] <- update.censored.obs.mixture.me(X.s, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
   
   # Initialize trace objects
   accepted <- rep(0, n.updates)
@@ -477,7 +479,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   # prob.below.trace <- rep(NA, n.updates)
   R.trace <- matrix(NA, n.updates, n.t)
   
-  # sd.ratio.trace <- rep(NA, n.updates)
+  sd.ratio.trace <- rep(NA, n.updates)
   
   # Column names for trace objects
   colnames(theta.gpd.trace) <- c("scale", "shape")
@@ -492,24 +494,26 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   theta.gpd.trace[1, ] <- theta.gpd[c(2,3)]
   # prob.below.trace[1] <- prob.below
   R.trace[1, ] <- R
-  if(is.null(prop.Sigma$theta.gpd))  prop.Sigma$theta.gpd<-diag(2)
-  # sd.ratio.trace[1] <- prop.Sigma$theta.gpd[2, 2]
+  if(is.null(prop.Sigma$delta.gpd))  prop.Sigma$delta.gpd<-diag(3)
+  sd.ratio.trace[1] <- prop.Sigma$theta.gpd[3, 3]
   
   # For tuning Metropolis updates of theta
-  if (is.null(sigma.m$delta)) sigma.m$delta <- 2.4^2
+  # if (is.null(sigma.m$delta)) sigma.m$delta <- 2.4^2
   if (is.null(sigma.m$rho)) sigma.m$rho <- 2.4^2
-  if (is.null(sigma.m$theta.gpd)) sigma.m$theta.gpd <- (2.4/2)^2
+  if (is.null(sigma.m$delta.gpd)) sigma.m$delta.gpd <- (2.4/3)^2
   # if (is.null(sigma.m$prob.below)) sigma.m$prob.below <- 1
   if (is.null(sigma.m$tau)) sigma.m$tau <- 2.4^2
   if (is.null(sigma.m$R)) sigma.m$R <- rep(2.4^2, n.t)
-  r.hat.delta <- NA
+  if (is.null(sigma.m$X.s)) sigma.m$X.s <- matrix(2.4^2,nrow=n.s,ncol=n.t)
+  
+  # r.hat.delta <- NA
   r.hat.rho <- NA
-  r.hat.theta.gpd <- NA
+  r.hat.delta.gpd <- NA
   r.hat.prob.below <- NA
   r.hat.tau <- NA
   # r.hat.R <- rep(NA, n.t)
   
-  # sd.ratio <- 7
+  sd.ratio <- 7
   
   
   for (i in 2:n.updates) {
@@ -517,27 +521,30 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
     ################################################################
     ## Update Metropolis adaptation parameters
     ################################################################
-    
+    gamma1 <- c.0 / (i + k)^(c.1)
+    gamma2 <- 1 / (i + k)^(c.1)
+    Accepted<-matrix(0, nrow=n.s, ncol=n.t) #For X.s
     
     for (j in 1:thin) {
-      gamma1 <- c.0 / ((i-1)*thin + j + k)^(c.1)
-      gamma2 <- 1 / ((i-1)*thin + j + k)^(c.1)
       
       ################################################################
       ## Update X -- branching: use X.s
       ################################################################
-      X[cen] <- update.censored.obs.mixture.me(X.s = X.s, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
+      # X[cen] <- update.censored.obs.mixture.me(X.s = X.s, cen = cen, tau_sqd = tau, thresh.X = thresh.X)
       X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd = tau, delta = delta, theta.gpd = theta.gpd, prob.below=prob.below)
       
       ################################################################
       ## Update X.star  *Parallel
       ################################################################
-      X.s.res <- X.s.update.mixture.me.par(R, Y, X, X.s, cen, 
-                                           prob.below, theta.gpd, delta,
-                                           tau, V, d, v.q=2, n.chain = 100, thresh.X = thresh.X)
+      # X.s.res <- X.s.update.mixture.me.par(R, Y, X, X.s, cen, 
+      #                                      prob.below, theta.gpd, delta,
+      #                                      tau, V, d, v.q=2, n.chain = 100, thresh.X = thresh.X)
+      X.s.res<-X.s.update.mixture.me.update.par.once.without.X.par(R, Y, X, X.s, cen,
+                                                                   prob.below, theta.gpd, delta,
+                                                                   tau, V, d, v.q=sigma.m$X.s, thresh.X=thresh.X)
       X.s <- X.s.res$X.s
-      X.s.accept <- X.s.res$accepted
-      
+      X.s.accept <- apply(X.s.res$accepted==1,2,any)
+      Accepted <- Accepted + X.s.res$accepted
       
       
       ################################################################
@@ -594,16 +601,18 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
       
       
       ################################################################
-      ## Update delta
+      ## Update delta and theta.gpd jointly
       ################################################################
-      metr.out.delta <- static.metr(z = R, starting.theta = delta, 
-                                    likelihood.fn = delta.update.mixture.me.likelihood, prior.fn = interval.unif,
-                                    hyper.params = hyper.params.delta, n.updates = n.metr.updates.delta, prop.Sigma = 1, sigma.m=sigma.m$delta, verbose=FALSE, 
-                                    Y = Y, X.s = X.s, cen = cen, prob.below = prob.below, theta.gpd = theta.gpd, tau_sqd = tau)
-      delta <- metr.out.delta$trace[n.metr.updates.delta]
-      r.hat.delta <- metr.out.delta$acc.prob
-      sigma.m$delta <- exp(log(sigma.m$delta) + gamma1*(r.hat.delta - metr.opt.1d))
+      metr.out.delta.gpd <- static.metr(z = R, starting.theta = c(delta, theta.gpd[2:3]),
+                                        likelihood.fn = delta.gpd.update.mixture.me.likelihood, prior.fn = delta.gpd.prior,
+                                        hyper.params = hyper.params.delta.gpd, n.updates = n.metr.updates.delta.gpd, prop.Sigma = prop.Sigma$delta.gpd, sigma.m=sigma.m$delta.gpd, verbose=FALSE, 
+                                        Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, tau_sqd = tau, loc = thresh)
       
+      delta <- metr.out.delta.gpd$trace[n.metr.updates.theta.gpd, 1]
+      theta.gpd[c(2,3)] <- metr.out.delta.gpd$trace[n.metr.updates.theta.gpd, 2:3]
+      r.hat.delta.gpd <- metr.out.delta.gpd$acc.prob
+      sigma.m$delta.gpd <- exp(log(sigma.m$delta.gpd) + gamma1*(r.hat.delta.gpd - metr.opt.3d))
+      prop.Sigma$delta.gpd <- prop.Sigma$delta.gpd + gamma2*(cov(metr.out.delta.gpd$trace)-prop.Sigma$delta.gpd)
       
       
       ################################################################
@@ -627,23 +636,13 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
       
       # Re-calculate the threshold on the X-scale    
       thresh.X <- qmixture.me.interp(p = prob.below, tau_sqd = tau, delta = delta)
-      
-      
-      
-      ################################################################
-      ## Update theta.gpd
-      ################################################################
-      metr.out.theta.gpd <- static.metr(z = R, starting.theta = theta.gpd[2:3],
-                                        likelihood.fn = theta.gpd.update.mixture.me.likelihood, prior.fn = gpd.prior,
-                                        hyper.params = hyper.params.theta.gpd, n.updates = n.metr.updates.theta.gpd, prop.Sigma = prop.Sigma$theta.gpd, sigma.m=sigma.m$theta.gpd, verbose=FALSE, 
-                                        Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
-      
-      theta.gpd[c(2,3)] <- metr.out.theta.gpd$trace[n.metr.updates.theta.gpd, ]
-      r.hat.theta.gpd <- metr.out.theta.gpd$acc.prob
-      sigma.m$theta.gpd <- exp(log(sigma.m$theta.gpd) + gamma1*(r.hat.theta.gpd - metr.opt.2d))
-      prop.Sigma$theta.gpd <- prop.Sigma$theta.gpd + gamma2*(cov(metr.out.theta.gpd$trace)-prop.Sigma$theta.gpd)
     }
     
+    
+    
+    # ---------------- Adapt sigma.m$X.s ------------------
+    r.hat.X.s <- Accepted/thin
+    sigma.m$X.s <- exp(log(sigma.m$X.s) + gamma1*(r.hat.X.s - metr.opt.1d))
     
     
     
@@ -657,7 +656,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
     theta.gpd.trace[i, ] <- theta.gpd[c(2,3)]
     # prob.below.trace[i] <- prob.below
     R.trace[i, ] <- R
-    # sd.ratio.trace[i] <- sd.ratio
+    sd.ratio.trace[i] <- sd.ratio
     
     
     
@@ -715,7 +714,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
       # Sys.sleep(0.1)
       state <- list(Y=Y, cen=cen, S=S, thresh=thresh,
                     experiment.name="Huser-wadsworth",
-                    i=i, sigma.m=sigma.m, prop.Sigma=prop.Sigma,
+                    i=i, sigma.m=sigma.m, prop.Sigma=prop.Sigma, sd.ratio.trace=sd.ratio.trace,
                     X=X, X.s=X.s, theta.gpd=theta.gpd, prob.below=prob.below,
                     delta=delta, R=R, tau=tau, rho=rho)
       out.obj <- list(Y=Y, cen=cen, S=S, thresh=thresh,
@@ -728,9 +727,8 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
                       delta.trace=delta.trace,
                       theta.gpd.trace=theta.gpd.trace,
                       # prob.below.trace=prob.below.trace,
-                      R.trace=R.trace
-                      # sd.ratio.trace=sd.ratio.trace
-                      )
+                      R.trace=R.trace,
+                      sd.ratio.trace=sd.ratio.trace)
       save(state, out.obj, file=sprintf("%s_progress_%1.1s.RData", experiment.name, save.bit))
       save.bit <- !save.bit
     }

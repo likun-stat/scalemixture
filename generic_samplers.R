@@ -236,6 +236,7 @@ static.metr <- function(z, starting.theta,
   # Begin main loop
   for (i in 2:n.updates) {
     theta.star <- theta + sigma.m * drop(rnorm(p) %*% prop.C)
+    # cat(theta.star,hyper.params,"\n")
     prior.star <- prior.fn(theta.star, hyper.params)
     if (prior.star != -Inf) {
       likelihood.star <- likelihood.fn(z, theta.star, ...)

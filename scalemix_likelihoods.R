@@ -607,3 +607,62 @@ Rt.update.mixture.me.likelihood <- function(data, params, X.s, delta,
 ################################################################################
 
 
+
+################################################################################
+## For the generic Metropolis sampler
+## Jointly sample delta and theta.gpd, for the scale 
+## mixture of Gaussians, where the   
+## mixing distribution comes from Huser-wadsworth scale mixture.
+## Just a wrapper for marg.transform.data.mixture.me.likelihood
+##
+## data............................... a n.t vector of scaling factors
+## params............................. a 2-vector of parameters:
+##                                     theta[1] = GPD scale
+##                                     theta[2] = GPD shape
+## Y ................................. a (n.s x n.t) matrix of data that are
+##                                     marginally GPD, and conditionally
+##                                     independent given X(s)
+## X.s ............................... the latent Gaussian process, without the
+##                                     measurement error
+## cen 
+## prob.below
+## theta.gpd
+## delta
+## tau_sqd
+##
+## No thresh.X
+##
+delta.gpd.update.mixture.me.likelihood <- function(data, params, Y, X.s, cen,   
+                                                   prob.below, tau_sqd, loc, thresh.X=NULL) {
+  
+  R <- data
+  theta.gpd <- c(loc, params)
+  
+  delta <- params[1]
+  scale <- params[2]
+  shape <- params[3]
+  
+  if (shape >= 0) max.support <- Inf  else max.support <- loc - scale/shape
+  
+  # If the parameters imply support that is not consistent with the data,
+  # then reject the parameters.
+  if (max(Y, na.rm=TRUE) > max.support) return(-Inf)
+  
+  if(delta < 0 || delta > 1) return(-Inf)
+  
+  X <- NA * Y
+  X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd=tau_sqd, delta=delta, 
+                               theta.gpd=theta.gpd, prob.below = prob.below)
+
+  ll <- marg.transform.data.mixture.me.likelihood(Y, X, X.s, cen, prob.below,
+                            theta.gpd, delta, tau_sqd) + dhuser.wadsworth(R, delta, log=TRUE)
+  
+  return(ll)
+}
+
+# theta.gpd.update.mixture.me.likelihood(R, c(1,0), Y, X.s, cen, prob.below, delta,
+#                                               tau, loc=thresh, thresh.X=thresh.X)
+
+#                                                                              #
+################################################################################
+
