@@ -269,7 +269,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
     ## Update theta.gpd
     ################################################################
     metr.out.theta.gpd <- static.metr(z = R, starting.theta = theta.gpd[2:3],
-                                        likelihood.fn = theta.gpd.update.mixture.me.likelihood, prior.fn = gpd.prior,
+                                        likelihood.fn = theta.gpd.update.mixture.me.likelihood, prior.fn = half.cauchy.scale.unif.shape,
                                         hyper.params = hyper.params.theta.gpd, n.updates = n.metr.updates.theta.gpd, prop.Sigma = prop.Sigma$theta.gpd, sigma.m=sigma.m$theta.gpd, verbose=FALSE, 
                                         Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
     

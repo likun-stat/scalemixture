@@ -9,7 +9,7 @@ library(fields)   # For rdist
 # ------------ 1. Simulation settings -------------
 n.s <- 200        # Number of sites
 n.t <- 20         # Number of time points
-tau <-9      # Nugget SD
+tau <-9           # Nugget SD
 delta <- 0.7      # For R
 lambda <- 0.5     # Powered exponential range
 gamma <-  1       # Powered exponential smoothness
@@ -74,7 +74,7 @@ true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.b
 scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
                                 initial.values=initial.values,
                                 n.updates=n.updates, thin=thin,
-                                experiment.name="Huser-wadsworth-improve",
+                                experiment.name="Huser-wadsworth-prior",
                                 echo.interval=echo.interval,
                                 sigma.m=NULL, prop.Sigma=NULL, 
                                 true.params=true.params, n.pl=1, lower.prob.lim=0.5)

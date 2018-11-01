@@ -135,6 +135,19 @@ gpd.prior <- function(params, hyper.params) {
   if (scale<w) return(-Inf)
   return(0)
 }
+
+#  Computes a half Cauchy densities with scale hyper.params for the first      #
+#  of the params, and a uniform(-0.5, 0.5) for the second.                     #
+
+half.cauchy.scale.unif.shape <- function(params, hyper.params) {
+  scale <- params[1]
+  shape <- params[2]
+  scale.theta.1 <- hyper.params[1]
+  
+  if (scale < 0) return(-Inf)
+  if ((shape < -0.5) | (shape > 0.5)) return(-Inf)
+  return(log(2) + dcauchy(scale, scale=scale.theta.1, log=TRUE))
+}
 #                                                                              #
 ################################################################################
 
