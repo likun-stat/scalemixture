@@ -71,10 +71,10 @@ thin <- 10
 echo.interval <- 50
 true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
 
-scalemix.sampler.01(Y=Y, S=S, cen=cen, thresh=thresh,
+scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
                                 initial.values=initial.values,
                                 n.updates=n.updates, thin=thin,
-                                experiment.name="Huser-wadsworth-joint",
+                                experiment.name="Huser-wadsworth-sampler",
                                 echo.interval=echo.interval,
                                 sigma.m=NULL, prop.Sigma=NULL, 
                                 true.params=true.params, n.pl=1, lower.prob.lim=0.5)

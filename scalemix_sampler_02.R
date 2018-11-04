@@ -123,6 +123,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   # prob.below.trace[1] <- prob.below
   R.trace[1, ] <- R
   if(is.null(prop.Sigma$theta.gpd))  prop.Sigma$theta.gpd<-diag(2)
+  if(is.null(prop.Sigma$gpd.corr))  prop.Sigma$gpd.corr<-0
   sd.ratio.trace[1] <- prop.Sigma$theta.gpd[2, 2]
   
   # For tuning Metropolis updates of theta
@@ -286,6 +287,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
     } else {
       sd.ratio.hat <- 1
     }
+    prop.Sigma$gpd.corr <- prop.Sigma$gpd.corr + gamma2 * (cor(metr.out.theta.gpd$trace[ ,1], metr.out.theta.gpd$trace[ ,2])-prop.Sigma$gpd.corr)
     sd.ratio <- exp(log(sd.ratio) + gamma1*(log(sd.ratio.hat) - log(sd.ratio)))
     prop.Sigma$theta.gpd <-  matrix(c(1, prop.Sigma$gpd.corr/sd.ratio, prop.Sigma$gpd.corr/sd.ratio, 1/sd.ratio^2), 2, 2)
 
@@ -425,7 +427,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
   # hyper.params.delta <- 1
   hyper.params.rho <- 1
   hyper.params.delta.gpd <- 1
-  hyper.params.tau <- c(0.1,0.1)
+  hyper.params.tau <- 2
   # hyper.params.prob.below <- c(0, 10)
   
   # A small number
@@ -591,7 +593,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
       ## Update tau
       ################################################################
       metr.out.tau <-  static.metr(z = R, starting.theta = tau, 
-                                   likelihood.fn = tau.update.mixture.me.likelihood, prior.fn = tau.sqd.prior,
+                                   likelihood.fn = tau.update.mixture.me.likelihood, prior.fn = half.cauchy,
                                    hyper.params = hyper.params.tau, n.updates = n.metr.updates.tau, prop.Sigma = 1, sigma.m=sigma.m$tau, verbose=FALSE, 
                                    Y = Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, theta.gpd = theta.gpd)
       tau <- metr.out.tau$trace[n.metr.updates.tau]

@@ -246,7 +246,7 @@ static.metr <- function(z, starting.theta,
       metr.ratio <- exp(prior.star + likelihood.star -
                         prior - likelihood)
       if(is.na(metr.ratio)){
-        cat(prior.star, likelihood.star,  prior, likelihood, theta, theta.star)
+        metr.ratio <- 0
       }
       if (metr.ratio > runif(1)) {
         theta <- theta.star
