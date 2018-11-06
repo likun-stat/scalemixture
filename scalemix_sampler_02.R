@@ -26,7 +26,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
                                 experiment.name="Huser-wadsworth",
                                 echo.interval=50,
                                 sigma.m=NULL, prop.Sigma=NULL, 
-                                true.params=NULL, n.pl=1, lower.prob.lim=0.5) {
+                                true.params=NULL, sd.ratio=NULL, lower.prob.lim=0.5) {
   
   library(doParallel)
   library(foreach)
@@ -122,7 +122,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   theta.gpd.trace[1, ] <- theta.gpd[c(2,3)]
   # prob.below.trace[1] <- prob.below
   R.trace[1, ] <- R
-  if(is.null(prop.Sigma$theta.gpd))  prop.Sigma$theta.gpd<-diag(2)
+  # if(is.null(prop.Sigma$theta.gpd))  prop.Sigma$theta.gpd<-diag(2)
   if(is.null(prop.Sigma$gpd.corr))  prop.Sigma$gpd.corr<-0
   sd.ratio.trace[1] <- prop.Sigma$theta.gpd[2, 2]
   
@@ -142,7 +142,7 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
   r.hat.tau <- NA
   # r.hat.R <- rep(NA, n.t)
   
-  sd.ratio <- 7
+  if (is.null(sd.ratio))   sd.ratio <- 7
   
   
   for (i in 2:n.updates) {
@@ -287,7 +287,6 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
     } else {
       sd.ratio.hat <- 1
     }
-    prop.Sigma$gpd.corr <- prop.Sigma$gpd.corr + gamma2 * (cor(metr.out.theta.gpd$trace[ ,1], metr.out.theta.gpd$trace[ ,2])-prop.Sigma$gpd.corr)
     sd.ratio <- exp(log(sd.ratio) + gamma1*(log(sd.ratio.hat) - log(sd.ratio)))
     prop.Sigma$theta.gpd <-  matrix(c(1, prop.Sigma$gpd.corr/sd.ratio, prop.Sigma$gpd.corr/sd.ratio, 1/sd.ratio^2), 2, 2)
 
