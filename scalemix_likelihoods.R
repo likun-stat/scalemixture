@@ -491,6 +491,59 @@ theta.gpd.update.mixture.me.likelihood <- function(data, params, Y, X.s, cen,
   return(ll)
 }
 
+
+scale.gpd.update.mixture.me.likelihood <- function(data, params, shape, Y, X.s, cen, 
+                                                   prob.below, delta,
+                                                   tau_sqd, loc, thresh.X=NULL) {
+  
+  R <- data
+  theta.gpd <- c(loc, params, shape)
+  
+  scale <- params[1]
+  if (shape >= 0) max.support <- Inf  else max.support <- loc - scale/shape
+  
+  # If the parameters imply support that is not consistent with the data,
+  # then reject the parameters.
+  if (max(Y, na.rm=TRUE) > max.support) return(-Inf)
+  
+  X <- NA * Y
+  X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd=tau_sqd, delta=delta, 
+                               theta.gpd=theta.gpd, prob.below = prob.below)
+  
+  ll <- matrix(0, nrow(Y), ncol(Y))
+  ll[!cen] <- dnorm(X[!cen], mean=X.s[!cen], sd=sqrt(tau_sqd), log=TRUE) +
+    dgpd(Y[!cen], loc=loc, scale=scale, shape=shape, log=TRUE)  -
+    dmixture.me(X[!cen], tau_sqd = tau_sqd, delta = delta, log=TRUE)+log(1-prob.below)
+  
+  return(sum(ll))
+}
+
+
+shape.gpd.update.mixture.me.likelihood <- function(data, params, scale, Y, X.s, cen, 
+                                                   prob.below, delta,
+                                                   tau_sqd, loc, thresh.X=NULL) {
+  
+  R <- data
+  theta.gpd <- c(loc, scale, params)
+  
+  shape <- params[1]
+  if (shape >= 0) max.support <- Inf  else max.support <- loc - scale/shape
+  
+  # If the parameters imply support that is not consistent with the data,
+  # then reject the parameters.
+  if (max(Y, na.rm=TRUE) > max.support) return(-Inf)
+  
+  X <- NA * Y
+  X[!cen] <- gpd.2.scalemix.me(Y[!cen], tau_sqd=tau_sqd, delta=delta, 
+                               theta.gpd=theta.gpd, prob.below = prob.below)
+  
+  ll <- matrix(0, nrow(Y), ncol(Y))
+  ll[!cen] <- dnorm(X[!cen], mean=X.s[!cen], sd=sqrt(tau_sqd), log=TRUE) +
+    dgpd(Y[!cen], loc=loc, scale=scale, shape=shape, log=TRUE)  -
+    dmixture.me(X[!cen], tau_sqd = tau_sqd, delta = delta, log=TRUE)+log(1-prob.below)
+  
+  return(sum(ll))
+}
 # theta.gpd.update.mixture.me.likelihood(R, c(1,0), Y, X.s, cen, prob.below, delta,
 #                                               tau, loc=thresh, thresh.X=thresh.X)
 

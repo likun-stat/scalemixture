@@ -336,13 +336,32 @@ abline(h=tau,lty=2,col="red")
 
 # 4. theta.gpd: scale, shape
 Res <- adaptive.metr(z = R, starting.theta = theta.gpd[2:3],
+                     likelihood.fn = theta.gpd.update.mixture.me.likelihood, prior.fn = gpd.prior,
+                     hyper.params = 0, n.updates = 9000, prop.Sigma = NULL, adapt.cov = TRUE, return.prop.Sigma.trace = FALSE,
+                     r.opt = .234, c.0 = 20, c.1 = .8, K = 10,
+                     Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
+tmp <- cov(Res$trace[4000:9000,])
+
+Res <- adaptive.metr(z = R, starting.theta = theta.gpd[2:3],
     likelihood.fn = theta.gpd.update.mixture.me.likelihood, prior.fn = gpd.prior,
-    hyper.params = 0, n.updates = 100000, prop.Sigma = NULL, adapt.cov = TRUE, return.prop.Sigma.trace = FALSE,
+    hyper.params = 0, n.updates = 9000, prop.Sigma = tmp, adapt.cov = TRUE, return.prop.Sigma.trace = FALSE,
     r.opt = .234, c.0 = 20, c.1 = .8, K = 10,
     Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
 
-plot(40000:100000, Res$trace[40000:100000,1], type="l", xlab = "Index", ylab = "scale")
-plot(40000:100000, Res$trace[40000:100000,2], type="l", xlab = "Index", ylab = "shape")
+Res <- adaptive.metr(z = R, starting.theta = 1,
+                     likelihood.fn = scale.gpd.update.mixture.me.likelihood, prior.fn = half.cauchy,
+                     hyper.params = 1, n.updates = 9000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = FALSE,
+                     r.opt = .234, c.0 = 20, c.1 = .8, K = 10,
+                     shape=0, Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
+Res <- adaptive.metr(z = R, starting.theta = 1,
+                     likelihood.fn = shape.gpd.update.mixture.me.likelihood, prior.fn = log.rho.prior,
+                     hyper.params = 1, n.updates = 9000, prop.Sigma = NULL, adapt.cov = FALSE, return.prop.Sigma.trace = FALSE,
+                     r.opt = .234, c.0 = 20, c.1 = .8, K = 10,
+                     scale=1, Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
+
+
+plot(Res$trace[,1], type="l", xlab = "Index", ylab = "scale")
+plot(Res$trace[-(1:100),2], type="l", xlab = "Index", ylab = "shape")
 
 
 # 5. Rt
