@@ -83,10 +83,10 @@ sd.ratio <- sqrt(prop.Sigma.theta[1,1]/prop.Sigma.theta[2,2])
 prop.Sigma <- list(gpd.corr=cor(Res$trace[10000:30000,])[1,2], theta.gpd=prop.Sigma.theta/prop.Sigma.theta[1,1])
 sigma.m<-list(theta.gpd=prop.Sigma.theta[1,1]*(2.4/2)^2)
 
-scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
+scalemix.sampler.04(Y=Y, S=S, cen=cen, thresh=thresh,
                                 initial.values=initial.values,
                                 n.updates=n.updates, thin=thin,
-                                experiment.name="Huser-wadsworth-sampler",
+                                experiment.name="Huser-wadsworth-sampler-inside",
                                 echo.interval=echo.interval,
                                 sigma.m=sigma.m, prop.Sigma=prop.Sigma,
                                 true.params=true.params, sd.ratio=sd.ratio, lower.prob.lim=0.5)
