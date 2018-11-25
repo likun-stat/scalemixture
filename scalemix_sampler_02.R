@@ -391,6 +391,8 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
 }
 
 
+
+# Update delta and theta.gpd jointly
 scalemix.sampler.01 <- function(Y, S, cen, thresh,
                                 initial.values,
                                 n.updates, thin=10,
@@ -742,6 +744,7 @@ scalemix.sampler.01 <- function(Y, S, cen, thresh,
 
 
 
+# Update theta.gpd individually
 scalemix.sampler.03 <- function(Y, S, cen, thresh,
                                 initial.values,
                                 n.updates, thin=10,

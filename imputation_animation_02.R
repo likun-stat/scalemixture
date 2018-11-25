@@ -71,29 +71,30 @@ thin <- 10
 echo.interval <- 50
 true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
 
-## Calculate 
-# Res <- adaptive.metr(z = R, starting.theta = theta.gpd[2:3],
-#                      likelihood.fn = theta.gpd.update.mixture.me.likelihood, prior.fn = gpd.prior,
-#                      hyper.params = 0, n.updates = 30000, prop.Sigma = NULL, adapt.cov = TRUE, return.prop.Sigma.trace = FALSE,
-#                      r.opt = .234, c.0 = 20, c.1 = .8, K = 10,
-#                      Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
-# prop.Sigma.theta <- cov(Res$trace[10000:30000,])
-# sd.ratio <- sqrt(prop.Sigma.theta[1,1]/prop.Sigma.theta[2,2])
-# prop.Sigma <- list(gpd.corr=cor(Res$trace[10000:30000,])[1,2], theta.gpd=prop.Sigma.theta/prop.Sigma.theta[1,1])
-# 
+# Calculate
+Res <- adaptive.metr(z = R, starting.theta = theta.gpd[2:3],
+                     likelihood.fn = theta.gpd.update.mixture.me.likelihood, prior.fn = half.cauchy.scale.unif.shape,
+                     hyper.params = 1, n.updates = 30000, prop.Sigma = NULL, adapt.cov = TRUE, return.prop.Sigma.trace = FALSE,
+                     r.opt = .234, c.0 = 10, c.1 = .8, K = 10,
+                     Y =Y, X.s = X.s, cen = cen, prob.below = prob.below, delta = delta, tau_sqd = tau, loc = thresh, thresh.X=thresh.X)
+prop.Sigma.theta <- cov(Res$trace[10000:30000,])
+sd.ratio <- sqrt(prop.Sigma.theta[1,1]/prop.Sigma.theta[2,2])
 
-# scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
-#                                 initial.values=initial.values,
-#                                 n.updates=n.updates, thin=thin,
-#                                 experiment.name="Huser-wadsworth-sampler",
-#                                 echo.interval=echo.interval,
-#                                 sigma.m=NULL, prop.Sigma=prop.Sigma, 
-#                                 true.params=true.params, sd.ratio=sd.ratio, lower.prob.lim=0.5)
+prop.Sigma <- list(gpd.corr=cor(Res$trace[10000:30000,])[1,2], theta.gpd=prop.Sigma.theta/prop.Sigma.theta[1,1])
+sigma.m<-list(theta.gpd=prop.Sigma.theta[1,1]*(2.4/2)^2)
 
-scalemix.sampler.03(Y=Y, S=S, cen=cen, thresh=thresh,
-                    initial.values=initial.values,
-                    n.updates=n.updates, thin=thin,
-                    experiment.name="Huser-wadsworth-scaleshape",
-                    echo.interval=echo.interval,
-                    sigma.m=NULL, prop.Sigma=NULL, 
-                    true.params=true.params, lower.prob.lim=0.5)
+scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
+                                initial.values=initial.values,
+                                n.updates=n.updates, thin=thin,
+                                experiment.name="Huser-wadsworth-sampler",
+                                echo.interval=echo.interval,
+                                sigma.m=sigma.m, prop.Sigma=prop.Sigma,
+                                true.params=true.params, sd.ratio=sd.ratio, lower.prob.lim=0.5)
+
+# scalemix.sampler.03(Y=Y, S=S, cen=cen, thresh=thresh,
+#                     initial.values=initial.values,
+#                     n.updates=n.updates, thin=thin,
+#                     experiment.name="Huser-wadsworth-scaleshape",
+#                     echo.interval=echo.interval,
+#                     sigma.m=NULL, prop.Sigma=NULL, 
+#                     true.params=true.params, lower.prob.lim=0.5)
