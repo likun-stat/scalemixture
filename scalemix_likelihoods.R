@@ -319,6 +319,36 @@ X.s.update.mixture.me.update.par.once.without.X.par <- function(R, Y, X, X.s, ce
   return(list(X.s=X.s, accepted=accepted))
 }
 
+X.s.update.mixture.me.update.par.once.without.X.mpi <- function(R, Y, X, X.s, cen,
+                                                                prob.below, theta.gpd, delta,
+                                                                tau_sqd, V, d, v.q=NULL, 
+                                                                thresh.X=NULL){
+  library(foreach)
+  library(doMPI)
+  
+  cl <- startMPIcluster(count=n.t, verbose=FALSE)
+  registerDoMPI(cl)
+  
+  n.s <- nrow(Y)
+  n.t <- ncol(Y)
+
+  accepted <- matrix(0,nrow=n.s, ncol=n.t) 
+  if(is.null(v.q)) v.q<-matrix(2.4^2,nrow=n.s, ncol=n.t)
+  
+  if(is.null(thresh.X)) thresh.X <- qmixture.me.interp(p = prob.below, tau_sqd = tau_sqd, delta = delta)
+  
+  Res<-foreach(t = 1:n.t, .combine = "cbind")%dopar%{
+    res<- update_X_s_onetime(Y[,t], X[,t], X.s[,t], cen[,t], prob.below, theta.gpd, delta, 
+                             tau_sqd, thresh.X, v.q[,t], R[t], V, d)
+    c(res$X.s, res$accept)
+  }
+  
+  X.s <- Res[1:n.s, ]
+  accepted <-Res[(n.s+1):(2*n.s),]
+  # closeCluster(cl)
+  
+  return(list(X.s=X.s, accepted=accepted))
+}
 
 #                                                                              #
 ################################################################################
