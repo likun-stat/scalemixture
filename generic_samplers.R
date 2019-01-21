@@ -98,7 +98,7 @@ adaptive.metr <- function(z, starting.theta,
       metr.ratio <- exp(prior.star + likelihood.star -
                         prior - likelihood)
       # if(is.na(metr.ratio)){
-      #   cat(prior.star, likelihood.star,  prior, likelihood, theta, theta.star)
+      #   cat(prior.star, likelihood.star,  prior, likelihood, theta, theta.star,"\n")
       # }
       if (metr.ratio > runif(1)) {
         theta <- theta.star

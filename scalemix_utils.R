@@ -180,7 +180,7 @@ pmixture <- Vectorize(pmixture.uni, "xval")
 ##                                     deviation
 ## delta ............................. Parameters that get passed to dhuser.wadsworth
 ##
-dmixture.me <- function(x, tau_sqd, delta, log=FALSE, max.x=200) {
+dmixture.me <- function(x, tau_sqd, delta, log=FALSE, max.x=8000) {
   if (length(x) < max.x) {
     dens <- dmixture_me(x, tau_sqd, delta)
     if (!log) return(dens) else return(log(dens))

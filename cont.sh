@@ -5,7 +5,7 @@
 #PBS -V
 #PBS -l nodes=1:ppn=20
 #PBS -l walltime=48:00:00
-#PBS -N scalemixture40
+#PBS -N sm_cont40
 #PBS -j oe
 #PBS -l pmem=8gb
 
@@ -24,6 +24,6 @@ echo "Job started on hostname at date"
 module purge
 module load r/3.4
 
-Rscript imputation_animation_02.R
+Rscript imputation_animation_02_cont.R
 
 echo "#-#-#Job Ended at `date`"

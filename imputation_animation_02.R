@@ -6,10 +6,9 @@ source("~/Desktop/Research/scalemixture/scalemix_sampler_02.R")
 
 library(fields)   # For rdist
 
-
 # ------------ 1. Simulation settings -------------
-n.s <- 100        # Number of sites
-n.t <- 40         # Number of time points
+n.s <- 200        # Number of sites
+n.t <- 20         # Number of time points
 tau <-9           # Nugget SD
 delta <- 0.7      # For R
 lambda <- 0.5     # Powered exponential range
@@ -26,7 +25,7 @@ S     <- cbind(seq(0, 1, length=n.s), seq(0, 1, length=n.s))
 Cor   <- corr.fn(rdist(S), rho)
 C.Cor <- chol(Cor)
 
-# set.seed(3333)
+set.seed(3333)
 u<-rep(NA,n.t)
 R<-rep(NA,n.t)
 for(t in 1:n.t){
@@ -67,7 +66,7 @@ Y[!cen] <- scalemix.me.2.gpd(x = X[!cen], tau_sqd = tau, delta = delta, theta.gp
 
 ## --------------- 4. Running Metropolis -------------------
 initial.values <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
-n.updates <- 40000
+n.updates <- 50000
 thin <- 10
 echo.interval <- 50
 true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
@@ -85,12 +84,12 @@ prop.Sigma <- list(gpd.corr=cor(Res$trace[10000:30000,])[1,2], theta.gpd=prop.Si
 sigma.m<-list(theta.gpd=prop.Sigma.theta[1,1]*(2.4/2)^2)
 
 scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
-                    initial.values=initial.values,
-                    n.updates=n.updates, thin=thin,
-                    experiment.name="Huser-wadsworth-bigdelta",
-                    echo.interval=echo.interval,
-                    sigma.m=sigma.m, prop.Sigma=prop.Sigma,
-                    true.params=true.params, sd.ratio=sd.ratio, lower.prob.lim=0.5)
+                                initial.values=initial.values,
+                                n.updates=n.updates, thin=thin,
+                                experiment.name="Huser-wadsworth-sampler",
+                                echo.interval=echo.interval,
+                                sigma.m=sigma.m, prop.Sigma=prop.Sigma,
+                                true.params=true.params, sd.ratio=sd.ratio, lower.prob.lim=0.5)
 
 # scalemix.sampler.03(Y=Y, S=S, cen=cen, thresh=thresh,
 #                     initial.values=initial.values,
