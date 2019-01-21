@@ -7,8 +7,8 @@ source("~/Desktop/Research/scalemixture/scalemix_sampler_02.R")
 library(fields)   # For rdist
 
 # ------------ 1. Simulation settings -------------
-n.s <- 200        # Number of sites
-n.t <- 20         # Number of time points
+n.s <- 100        # Number of sites
+n.t <- 40         # Number of time points
 tau <-9           # Nugget SD
 delta <- 0.7      # For R
 lambda <- 0.5     # Powered exponential range
@@ -20,12 +20,12 @@ thresh <- 11
 
 
 # -------------- 2. Generate fake data -----------------
-S     <- cbind(seq(0, 1, length=n.s), seq(0, 1, length=n.s))
+S     <- cbind(runif(n.s, 0, 1), runif(n.s, 0, 1))
 # Cor   <- corr.fn(rdist(S), lambda = lambda, gamma = gamma)
 Cor   <- corr.fn(rdist(S), rho)
 C.Cor <- chol(Cor)
 
-set.seed(3333)
+# set.seed(3333)
 u<-rep(NA,n.t)
 R<-rep(NA,n.t)
 for(t in 1:n.t){
@@ -60,6 +60,7 @@ library(evd)
 Y <- X
 Y[cen] <- NA
 Y[!cen] <- scalemix.me.2.gpd(x = X[!cen], tau_sqd = tau, delta = delta, theta.gpd = theta.gpd, prob.below=prob.below)
+tmp<-scalemix.me.2.gpd(x = X[!cen], tau_sqd = tau, delta = delta, theta.gpd = theta.gpd, prob.below=prob.below)
 
 
 
@@ -70,6 +71,7 @@ n.updates <- 50000
 thin <- 10
 echo.interval <- 50
 true.params <- list(delta = delta, rho=rho, tau=tau, theta.gpd=theta.gpd, prob.below=prob.below, X.s=X.s, R=R)
+save(Y, X, thresh.X, cen, tmp, true.params, file="Initial.RData")
 
 # Calculate
 Res <- adaptive.metr(z = R, starting.theta = theta.gpd[2:3],
@@ -81,15 +83,20 @@ prop.Sigma.theta <- cov(Res$trace[10000:30000,])
 sd.ratio <- sqrt(prop.Sigma.theta[1,1]/prop.Sigma.theta[2,2])
 
 prop.Sigma <- list(gpd.corr=cor(Res$trace[10000:30000,])[1,2], theta.gpd=prop.Sigma.theta/prop.Sigma.theta[1,1])
-sigma.m<-list(theta.gpd=prop.Sigma.theta[1,1]*(2.4/2)^2)
+sigma.m<-list(theta.gpd=(2.4/2)^2)
+cat("sd.ratio=",sd.ratio,"\n")
+cat("corr=",prop.Sigma$gpd.corr,"\n")
+cat("sigma11=",prop.Sigma.theta[1,1],"\n")
 
-scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
-                                initial.values=initial.values,
-                                n.updates=n.updates, thin=thin,
-                                experiment.name="Huser-wadsworth-sampler",
-                                echo.interval=echo.interval,
-                                sigma.m=sigma.m, prop.Sigma=prop.Sigma,
-                                true.params=true.params, sd.ratio=sd.ratio, lower.prob.lim=0.5)
+if(prop.Sigma.theta[2,2]>0  & sd.ratio<100) {
+  scalemix.sampler.02(Y=Y, S=S, cen=cen, thresh=thresh,
+                      initial.values=initial.values,
+                      n.updates=n.updates, thin=thin,
+                      experiment.name="Huser-wadsworth-bigdelta",
+                      echo.interval=echo.interval,
+                      sigma.m=sigma.m, prop.Sigma=prop.Sigma,
+                      true.params=true.params, sd.ratio=sd.ratio, lower.prob.lim=0.5)
+}
 
 # scalemix.sampler.03(Y=Y, S=S, cen=cen, thresh=thresh,
 #                     initial.values=initial.values,
