@@ -1,7 +1,7 @@
 
 #!/bin/bash
 
-#PBS -A open
+#PBS -A drh20_a_g_sc_default 
 #PBS -V
 #PBS -l nodes=1:ppn=20
 #PBS -l walltime=48:00:00

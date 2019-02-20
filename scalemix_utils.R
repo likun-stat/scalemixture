@@ -1,5 +1,5 @@
 Rcpp::sourceCpp('~/Desktop/Research/scalemixture/integration.cpp')
-Rcpp::sourceCpp('~/Desktop/Research/scalemixture/likelihood.cpp')
+#Rcpp::sourceCpp('~/Desktop/Research/scalemixture/likelihood.cpp')
 
 
 pow<-function(x,y){

@@ -173,8 +173,8 @@ scalemix.sampler.02 <- function(Y, S, cen, thresh,
                                                             tau, V, d, v.q=sigma.m$X.s, thresh.X=thresh.X)
     X.s <- X.s.res$X.s
     X.s.accept <- apply(X.s.res$accepted==1,2,any)
-    Accepted <- tryCatch(Accepted + X.s.res$accepted, finally={cat("The dim of X.s.res$accepted is (",dim(X.s.res$accepted),")")})
-
+    Accepted <- tryCatch(Accepted + X.s.res$accepted, error=function(e){cat("The dim of X.s.res$accepted is (",dim(X.s.res$accepted),")","\n")})
+    
     
     
     ################################################################
@@ -532,8 +532,8 @@ scalemix.sampler.02.cont <- function(Y, S, cen, thresh,
                                                                    tau, V, d, v.q=sigma.m$X.s, thresh.X=thresh.X)
       X.s <- X.s.res$X.s
       X.s.accept <- apply(X.s.res$accepted==1,2,any)
-      Accepted <- tryCatch(Accepted + X.s.res$accepted, finally={cat("The dim of X.s.res$accepted is (",dim(X.s.res$accepted),")")})
-
+      Accepted <- tryCatch(Accepted + X.s.res$accepted, error=function(e){cat("The dim of X.s.res$accepted is (",dim(X.s.res$accepted),")","\n")})
+      
       
       
       ################################################################

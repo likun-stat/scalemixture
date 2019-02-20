@@ -26,9 +26,8 @@ double mix_me_distn_integrand(double x, void *p) {
     double tau_sqd  = (params->tau_sqd);
     double delta = (params->delta);
     
-    double half_result;
-    if(abs(delta-0.5)<1e-5) {half_result = pow(xval-x,-1)*(log(xval-x)+1);}
-    else {half_result = (delta/(2*delta-1))*pow(xval-x,-(1-delta)/delta)-((1-delta)/(2*delta-1))*pow(xval-x,-1);}
+    double half_result = (delta/(2*delta-1))*pow(xval-x,-(1-delta)/delta)-((1-delta)/(2*delta-1))*pow(xval-x,-1);
+    if(delta==0.5) {half_result = pow(xval-x,-1)*(log(xval-x)+1);}
     
     return R::dnorm(x, 0.0, sqrt(tau_sqd), 0) * half_result;
 }
