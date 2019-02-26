@@ -27,7 +27,7 @@ double mix_me_distn_integrand(double x, void *p) {
     double delta = (params->delta);
     
     double half_result = (delta/(2*delta-1))*pow(xval-x,-(1-delta)/delta)-((1-delta)/(2*delta-1))*pow(xval-x,-1);
-    if(delta==0.5) {half_result = pow(xval-x,-1)*(log(xval-x)+1);}
+    if(fabs(delta-0.5)<1e-3) {half_result = pow(xval-x,-1)*(log(xval-x)+1);}
     
     return R::dnorm(x, 0.0, sqrt(tau_sqd), 0) * half_result;
 }
@@ -40,7 +40,7 @@ double mix_me_dens_integrand(double x, void *p) {
     double delta = (params->delta);
     
     double half_result = ((1-delta)/(2*delta-1))*pow(xval-x,-2)-((1-delta)/(2*delta-1))*pow(xval-x,-1/delta);
-    if(delta==0.5) half_result = -pow(xval-x,-2)*log(xval-x);
+    if(fabs(delta-0.5)<1e-3) half_result = -pow(xval-x,-2)*log(xval-x);
     
     return R::dnorm(x, 0.0, sqrt(tau_sqd), 0) * half_result;
 }
@@ -134,7 +134,7 @@ NumericVector pmixture_me_old(NumericVector x, double tau_sqd, double delta, dou
 // [[Rcpp::export]]
 double asymptotic_p(double x, double delta){
     double result = 1-(delta/(2*delta-1))*pow(x,(delta-1)/delta)+((1-delta)/(2*delta-1))*pow(x,-1);
-    if(delta==0.5) result = 1-pow(x,-1)*(log(x)+1);
+    if(fabs(delta-0.5)<1e-3) result = 1-pow(x,-1)*(log(x)+1);
     return result;
 }
 
@@ -154,19 +154,20 @@ NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double 
     
     
     // First decide a cutoff point where the quantile is high enough to use asymptotic results
-    double high_quantiles[] = {10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5, 14.0, 15.0, 20.0, 50.0};
-    double threshold = 50.0;
+    double high_quantiles[] = {6.0, 11.0, 15.0, 16.0, 18.0, 19.0, 19.5, 20.0, 20.5, 21.0, 25.0, 30.0, 35.0, 40.0};
+    double threshold = 40.0;
     double init_p = 0.0;
     double init_est = 0.0;
     
-    for(int iter = 0; iter < 12; iter++){
+    for(int iter = 0; iter < 14; iter++){
         init_p = pmixture_me_uni(high_quantiles[iter], tau_sqd, delta);
         init_est = asymptotic_p(high_quantiles[iter], delta);
-        if(fabs(init_p - init_est)<0.0005){
+        if(fabs(init_p - init_est)<0.001||init_p==1){
             threshold = high_quantiles[iter];
             break;
         }
     }
+    
     
     // Calculate CDF fucntion at each x values
     for(int i = 0; i < n; i++) {
@@ -256,7 +257,7 @@ NumericVector dmixture_me_old(NumericVector x, double tau_sqd, double delta, dou
 // [[Rcpp::export]]
 double asymptotic_d(double x, double delta){
     double result = ((1-delta)/(2*delta-1))*(pow(x,-1/delta)-pow(x,-2));
-    if(delta==0.5) result=pow(x,-2)*log(x);
+    if(fabs(delta-0.5)<1e-3) result=pow(x,-2)*log(x);
     return result;
 }
 
@@ -276,15 +277,15 @@ NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double 
     gsl_set_error_handler_off();
     
     // First decide a cutoff point where the quantile is high enough to use asymptotic results
-    double high_quantiles[] = {15.0, 16.0, 18.0, 19.0, 19.5, 20.0, 20.5, 21.0, 25.0, 30.0, 35.0, 40.0};
+    double high_quantiles[] = {6.0, 11.0, 15.0, 16.0, 18.0, 19.0, 19.5, 20.0, 20.5, 21.0, 25.0, 30.0, 35.0, 40.0};
     double threshold = 40.0;
     double init_p = 0.0;
     double init_est = 0.0;
     
-    for(int iter = 0; iter < 12; iter++){
+    for(int iter = 0; iter < 14; iter++){
         init_p = pmixture_me_uni(high_quantiles[iter], tau_sqd, delta);
         init_est = asymptotic_p(high_quantiles[iter], delta);
-        if(fabs(init_p - init_est)<0.001){
+        if(fabs(init_p - init_est)<0.001||init_p==1){
             threshold = high_quantiles[iter];
             break;
         }
@@ -329,26 +330,33 @@ NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double 
 
 
 // [[Rcpp::export]]
-double threshold_me(double tau_sqd, double delta) {
+List threshold_me(double tau_sqd, double delta) {
     
     
     // First decide a cutoff point where the quantile is high enough to use asymptotic results
-    double high_quantiles[] = {15.0, 16.0, 18.0, 19.0, 19.5, 20.0, 20.5, 21.0, 25.0, 30.0, 35.0, 40.0};
+    double high_quantiles[] = {6.0, 11.0, 15.0, 16.0, 18.0, 19.0, 19.5, 20.0, 20.5, 21.0, 25.0, 30.0, 35.0, 40.0};
+    NumericVector p(14), p_est(14);
     double threshold = 40.0;
     double init_p = 0.0;
     double init_est = 0.0;
     
-    for(int iter = 0; iter < 12; iter++){
+    for(int iter = 0; iter < 14; iter++){
         init_p = pmixture_me_uni(high_quantiles[iter], tau_sqd, delta);
         init_est = asymptotic_p(high_quantiles[iter], delta);
-        if(fabs(init_p - init_est)<0.001){
+        p[iter]=init_p;
+        p_est[iter]=init_est;
+        if(fabs(init_p - init_est)<0.001||init_p==1){
             threshold = high_quantiles[iter];
             break;
         }
     }
-    
-    return threshold;
+    List result;
+    result["threshold"] = threshold;
+    result["p"]=p;
+    result["p_est"]=p_est;
+    return result;
 }
+
 
 /*  Test in R
  # parameter settings
