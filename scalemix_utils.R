@@ -196,15 +196,18 @@ dmixture <- Vectorize(dmixture.uni, "xval")
 dmixture.me <- function(x, tau_sqd, delta, log=FALSE, max.x=8000) {
   if (length(x) < max.x) {
     dens <- dmixture_me(x, tau_sqd, delta)
-    if(any(x<0.001)) dens[x<0.001] <- dmixture(x[x<0.001], tau_sqd, delta)
-    if (!log) return(dens) else return(log(dens))
   } else {
     design.x <- seq(min(x), max(x), length=max.x)
     design.y <- dmixture_me(design.x, tau_sqd, delta) 
     dens <- spline(x=design.x, y=design.y, xout=x)$y
-    if(any(x<0.001)) dens[x<0.001] <- dmixture(x[x<0.001], tau_sqd, delta)
-    if (!log) return(dens) else return(log(dens))
   }
+  
+  if(any(x<tau_sqd/5000)) {
+    dens[x<tau_sqd/5000] <- tryCatch(dmixture(x[x<tau_sqd/5000], tau_sqd, delta), 
+                                     error=function(e){cat("delta=",delta,"tau=",tau_sqd,"\n");
+                                       rep(1e-20,length(x<tau_sqd/5000))})
+  }
+  if (!log) return(dens) else return(log(dens))
 }
 
 ##
