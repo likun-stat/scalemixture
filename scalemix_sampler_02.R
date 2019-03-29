@@ -400,7 +400,7 @@ scalemix.sampler.02.cont <- function(Y, S, cen, thresh,
                                      experiment.name="Huser-wadsworth",
                                      echo.interval=50,
                                      sigma.m=NULL, prop.Sigma=NULL, 
-                                     true.params=NULL, sd.ratio=NULL, lower.prob.lim=0.5, out.obj) {
+                                     true.params=NULL, sd.ratio=NULL, lower.prob.lim=0.5, out.obj, offset=0) {
   
   #library(doParallel)
   #library(foreach)
@@ -658,23 +658,23 @@ scalemix.sampler.02.cont <- function(Y, S, cen, thresh,
     
     
     # ------------------------- Fill in trace objects ---------------------------
-    X.s.trace[i + i_prev, , ] <- X.s
-    X.trace[i + i_prev, , ] <- X
-    X.s.accept.trace[i + i_prev, ] <- X.s.accept
-    rho.trace[i + i_prev] <- rho
-    tau.trace[i + i_prev] <- tau
-    delta.trace[i + i_prev] <- delta
-    theta.gpd.trace[i + i_prev, ] <- theta.gpd[c(2,3)]
+    X.s.trace[i + i_prev -offset, , ] <- X.s
+    X.trace[i + i_prev-offset, , ] <- X
+    X.s.accept.trace[i + i_prev-offset, ] <- X.s.accept
+    rho.trace[i + i_prev-offset] <- rho
+    tau.trace[i + i_prev-offset] <- tau
+    delta.trace[i + i_prev-offset] <- delta
+    theta.gpd.trace[i + i_prev-offset, ] <- theta.gpd[c(2,3)]
     # prob.below.trace[i + i_prev] <- prob.below
-    R.trace[i + i_prev, ] <- R
-    sd.ratio.trace[i + i_prev] <- sd.ratio
+    R.trace[i + i_prev-offset, ] <- R
+    sd.ratio.trace[i + i_prev-offset] <- sd.ratio
     
     
     
     # ----------------------------- Echo progress --------------------------------
     cat("Done with", i, "updates,\n")
     if ((i %% echo.interval) == 0) {
-      cat(" Acceptance rate for X^* is", mean(X.s.accept.trace[(i + i_prev-echo.interval):(i + i_prev), ]), "\n")
+      cat(" Acceptance rate for X^* is", mean(X.s.accept.trace[(i + i_prev-echo.interval-offset):(i + i_prev-offset), ]), "\n")
       pdf(file=sprintf("%s_progress.pdf", experiment.name))
       par(mfrow=c(3,2))
       plot(rho.trace, type="l", ylab=expression(rho))
