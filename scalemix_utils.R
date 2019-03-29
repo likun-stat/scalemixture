@@ -1,4 +1,4 @@
-Rcpp::sourceCpp('~/Desktop/Research/scalemixture_reg/integration.cpp')
+Rcpp::sourceCpp('~/Desktop/Research/scalemixture/integration.cpp')
 #Rcpp::sourceCpp('~/Desktop/Research/scalemixture/likelihood.cpp')
 
 
@@ -228,17 +228,16 @@ dmixture.me <- function(x, tau_sqd, delta, log=FALSE, max.x=8000) {
 ## theta.gpd ......................... A vector, (thresh, scale, shape)
 ## 
 ##
-scalemix.me.2.gpd <- function(x, tau_sqd, delta, theta.gpd, shape, lon, prob.below=0) {
+scalemix.me.2.gpd <- function(x, tau_sqd, delta, theta.gpd, prob.below=0) {
   require(evd)
   
   thresh <- theta.gpd[1]
-  a <- theta.gpd[2]
-  b <- theta.gpd[3]
-  Scale <- a+b*lon
-  
+  scale <- theta.gpd[2]
+  shape <- theta.gpd[3]
+
   unifs <- pmixture_me(x, tau_sqd, delta)
   # gpds <- qgpd(unifs, loc=thresh, scale=scale, shape=shape)
-  gpds <- qgpd((unifs-prob.below) / (1-prob.below), loc=thresh, scale=Scale, shape=shape)
+  gpds <- qgpd((unifs-prob.below) / (1-prob.below), loc=thresh, scale=scale, shape=shape)
   
   return(gpds)
 }
@@ -264,16 +263,15 @@ scalemix.me.2.gpd <- function(x, tau_sqd, delta, theta.gpd, shape, lon, prob.bel
 ## theta.gaussian .................... A parameter, mu
 ## 
 ##
-gpd.2.scalemix.me <- function(y, tau_sqd, delta, theta.gpd, shape, lon, prob.below=0) {
+gpd.2.scalemix.me <- function(y, tau_sqd, delta, theta.gpd, prob.below=0) {
   require(evd)
   
   thresh <- theta.gpd[1]
-  a <- theta.gpd[2]
-  b <- theta.gpd[3]
-  Scale <- a+b*lon
-  
+  scale <- theta.gpd[2]
+  shape <- theta.gpd[3]
+
   # unifs <- pgpd(y, loc=thresh, scale=scale, shape=shape)
-  unifs <- (1-prob.below) * pgpd(y, loc=thresh, scale=Scale, shape=shape) + prob.below
+  unifs <- (1-prob.below) * pgpd(y, loc=thresh, scale=scale, shape=shape) + prob.below
   scalemixes <- qmixture.me.interp(unifs, tau_sqd = tau_sqd, delta = delta, n.x=500)
   
   return(scalemixes)
