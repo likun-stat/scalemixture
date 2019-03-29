@@ -1,4 +1,4 @@
-Rcpp::sourceCpp('~/Desktop/Research/scalemixture/integration.cpp')
+Rcpp::sourceCpp('~/Desktop/Research/scalemixture_reg/integration.cpp')
 #Rcpp::sourceCpp('~/Desktop/Research/scalemixture/likelihood.cpp')
 
 
@@ -136,8 +136,16 @@ qmixture.me.interp <- function(p, tau_sqd, delta, mu=0, cdf.vals = NULL, x.vals 
 ##
 mix.distn.integrand <- function(x, xval, tau_sqd, delta) {
   prod <- rep(0, length(x))
-
+  
   half_result = (delta/(2*delta-1))*(xval-x)^(-(1-delta)/delta)-((1-delta)/(2*delta-1))*(xval-x)^(-1)
+  prod <- dnorm(x, 0.0, sqrt(tau_sqd)) * half_result
+  return(prod)
+}
+
+mix.dens.integrand <- function(x, xval, tau_sqd, delta) {
+  prod <- rep(0, length(x))
+  
+  half_result = ((1-delta)/(2*delta-1))*(xval-x)^{-2}-((1-delta)/(2*delta-1))*(xval-x)^(-1/delta)
   prod <- dnorm(x, 0.0, sqrt(tau_sqd)) * half_result
   return(prod)
 }
@@ -164,6 +172,11 @@ pmixture.uni <- function(xval, tau_sqd, delta) {
 }
 pmixture <- Vectorize(pmixture.uni, "xval")
 
+dmixture.uni <- function(xval, tau_sqd, delta) {
+  integ <- integrate(mix.dens.integrand, -Inf, xval-1,  xval=xval, tau_sqd = tau_sqd, delta = delta, rel.tol = 1e-10)
+  return(-integ$value)
+}
+dmixture <- Vectorize(dmixture.uni, "xval")
 ##
 ################################################################################
 ################################################################################
@@ -183,11 +196,13 @@ pmixture <- Vectorize(pmixture.uni, "xval")
 dmixture.me <- function(x, tau_sqd, delta, log=FALSE, max.x=8000) {
   if (length(x) < max.x) {
     dens <- dmixture_me(x, tau_sqd, delta)
+    if(any(x<0.001)) dens[x<0.001] <- dmixture(x[x<0.001], tau_sqd, delta)
     if (!log) return(dens) else return(log(dens))
   } else {
     design.x <- seq(min(x), max(x), length=max.x)
     design.y <- dmixture_me(design.x, tau_sqd, delta) 
     dens <- spline(x=design.x, y=design.y, xout=x)$y
+    if(any(x<0.001)) dens[x<0.001] <- dmixture(x[x<0.001], tau_sqd, delta)
     if (!log) return(dens) else return(log(dens))
   }
 }
@@ -213,16 +228,17 @@ dmixture.me <- function(x, tau_sqd, delta, log=FALSE, max.x=8000) {
 ## theta.gpd ......................... A vector, (thresh, scale, shape)
 ## 
 ##
-scalemix.me.2.gpd <- function(x, tau_sqd, delta, theta.gpd, prob.below=0) {
+scalemix.me.2.gpd <- function(x, tau_sqd, delta, theta.gpd, shape, lon, prob.below=0) {
   require(evd)
   
   thresh <- theta.gpd[1]
-  scale <- theta.gpd[2]
-  shape <- theta.gpd[3]
+  a <- theta.gpd[2]
+  b <- theta.gpd[3]
+  Scale <- a+b*lon
   
   unifs <- pmixture_me(x, tau_sqd, delta)
   # gpds <- qgpd(unifs, loc=thresh, scale=scale, shape=shape)
-  gpds <- qgpd((unifs-prob.below) / (1-prob.below), loc=thresh, scale=scale, shape=shape)
+  gpds <- qgpd((unifs-prob.below) / (1-prob.below), loc=thresh, scale=Scale, shape=shape)
   
   return(gpds)
 }
@@ -248,15 +264,16 @@ scalemix.me.2.gpd <- function(x, tau_sqd, delta, theta.gpd, prob.below=0) {
 ## theta.gaussian .................... A parameter, mu
 ## 
 ##
-gpd.2.scalemix.me <- function(y, tau_sqd, delta, theta.gpd, prob.below=0) {
+gpd.2.scalemix.me <- function(y, tau_sqd, delta, theta.gpd, shape, lon, prob.below=0) {
   require(evd)
   
   thresh <- theta.gpd[1]
-  scale <- theta.gpd[2]
-  shape <- theta.gpd[3]
+  a <- theta.gpd[2]
+  b <- theta.gpd[3]
+  Scale <- a+b*lon
   
   # unifs <- pgpd(y, loc=thresh, scale=scale, shape=shape)
-  unifs <- (1-prob.below) * pgpd(y, loc=thresh, scale=scale, shape=shape) + prob.below
+  unifs <- (1-prob.below) * pgpd(y, loc=thresh, scale=Scale, shape=shape) + prob.below
   scalemixes <- qmixture.me.interp(unifs, tau_sqd = tau_sqd, delta = delta, n.x=500)
   
   return(scalemixes)

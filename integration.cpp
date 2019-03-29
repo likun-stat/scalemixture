@@ -167,7 +167,7 @@ NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double 
             break;
         }
     }
-    
+    if(tau_sqd>10000) threshold = 300;
     
     // Calculate CDF fucntion at each x values
     for(int i = 0; i < n; i++) {
@@ -290,6 +290,7 @@ NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double 
             break;
         }
     }
+    if(tau_sqd>10000) threshold = 300;
     
     // Calculate PDF fucntion at each x values
     for(int i = 0; i < n; i++) {
@@ -350,6 +351,7 @@ List threshold_me(double tau_sqd, double delta) {
             break;
         }
     }
+    if(tau_sqd>10000) threshold = 300;
     List result;
     result["threshold"] = threshold;
     result["p"]=p;
