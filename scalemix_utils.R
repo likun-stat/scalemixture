@@ -91,7 +91,7 @@ corr.fn <- function(d, rho) {
 ##                                     function.
 ##
 qmixture.me.interp <- function(p, tau_sqd, delta, mu=0, cdf.vals = NULL, x.vals = NULL,
-                               n.x=200, lower=5, upper=20) {
+                               n.x=200, lower=5, upper=20, method="fmm") {
   
   large.delta.large.x <- FALSE
   if (is.null(x.vals)) {
@@ -106,11 +106,11 @@ qmixture.me.interp <- function(p, tau_sqd, delta, mu=0, cdf.vals = NULL, x.vals 
       cdf.vals <- pmixture_me(x.vals, tau_sqd, delta)
     }
   }
-  if(!large.delta.large.x) q.vals <- spline(x=cdf.vals, y=x.vals, xout=p)$y else{
+  if(!large.delta.large.x) q.vals <- spline(x=cdf.vals, y=x.vals, xout=p, method=method)$y else{
     which<- p>tail(cdf.vals,1)
     q.vals <- rep(NA, length(p))
     q.vals[which] <- x.range[2]
-    if(any(!which)) q.vals[!which] <- spline(x=cdf.vals, y=x.vals, xout=p[!which])$y
+    if(any(!which)) q.vals[!which] <- spline(x=cdf.vals, y=x.vals, xout=p[!which], method=method)$y
   }
   return(q.vals)
   
