@@ -203,11 +203,11 @@ dmixture.me <- function(x, tau_sqd, delta, log=FALSE, max.x=8000) {
     dens <- spline(x=design.x, y=design.y, xout=x)$y
   }
   
-  if(any(x<tau_sqd/5000)) {
-    dens[x<tau_sqd/5000] <- tryCatch(dmixture(x[x<tau_sqd/5000], tau_sqd, delta), 
-                                     error=function(e){cat("delta=",delta,"tau=",tau_sqd,"\n");
-                                       rep(1e-20,length(x<tau_sqd/5000))})
-  }
+  # if(any(x<tau_sqd/5000)) {
+  #   dens[x<tau_sqd/5000] <- tryCatch(dmixture(x[x<tau_sqd/5000], tau_sqd, delta),
+  #                                    error=function(e){cat("delta=",delta,"tau=",tau_sqd,"\n");
+  #                                      rep(1e-20,length(x<tau_sqd/5000))})
+  # }
   if (!log) return(dens) else return(log(dens))
 }
 
