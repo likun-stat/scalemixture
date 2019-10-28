@@ -63,7 +63,7 @@ double pmixture_me_uni(double x, double tau_sqd, double delta, double relerr = 1
     
     double abserr = 0.0;
     
-    if(x>1){
+    //if(x>1){
         
         // QAGI adaptive integration on infinite intervals
         double err = gsl_integration_qagil(&F, x-1, 1e-12, relerr, 1e5, work, &result, &abserr);
@@ -76,8 +76,8 @@ double pmixture_me_uni(double x, double tau_sqd, double delta, double relerr = 1
             Rcpp::Rcout << "Err = " << err << std::endl;
             result = -1.0;
         }
-    }
-    else {result = -1.0;}
+    //}
+    //else {result = -1.0;}
     
     gsl_integration_workspace_free(work);
     
@@ -106,7 +106,7 @@ NumericVector pmixture_me_old(NumericVector x, double tau_sqd, double delta, dou
         double result = 0.0;
         double abserr = 0.0;
         
-        if(x[i]>1){
+        //if(x[i]>1){
             
             // QAGI adaptive integration on infinite intervals
             double err = gsl_integration_qagil(&F, x[i]-1, 1e-12, relerr, 1e5, work, &result, &abserr);
@@ -119,8 +119,8 @@ NumericVector pmixture_me_old(NumericVector x, double tau_sqd, double delta, dou
                 Rcpp::Rcout << "Err = " << err << std::endl;
                 result = -1.0;
             }
-        }
-        else {result = -1.0;}
+        //}
+        //else {result = -1.0;}
         
         resultVec[i] = result;
     }
@@ -177,8 +177,8 @@ NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double 
         double result = 0.0;
         double abserr = 0.0;
         
-        if( (x[i]>1) & (x[i]<threshold) ){
-            
+        //if( (x[i]>1) & (x[i]<threshold) ){
+        if( (x[i]<threshold) ){
             // QAGI adaptive integration on infinite intervals
             double err = gsl_integration_qagil(&F, x[i]-1, 1e-12, relerr, 1e5, work, &result, &abserr);
             
@@ -193,7 +193,7 @@ NumericVector pmixture_me(NumericVector x, double tau_sqd, double delta, double 
             }
         }
         else if(x[i]>=threshold) {result = asymptotic_p(x[i], delta);}
-        else {result = -1.0;}
+        //else {result = -1.0;}
         
         resultVec[i] = result;
     }
@@ -224,7 +224,7 @@ NumericVector dmixture_me_old(NumericVector x, double tau_sqd, double delta, dou
         double result = 0.0;
         double abserr = 0.0;
         
-        if(x[i]>1){
+        //if(x[i]>1){
             
             // QAGI adaptive integration on infinite intervals
             double err = gsl_integration_qagil(&F, x[i]-1, 1e-12, relerr, 1e5, work, &result, &abserr);
@@ -237,8 +237,8 @@ NumericVector dmixture_me_old(NumericVector x, double tau_sqd, double delta, dou
                 Rcpp::Rcout << "Err = " << err << std::endl;
                 result = -1.0;
             }
-        }
-        else {result = -1.0;}
+        //}
+        //else {result = -1.0;}
         
         if (result > 0) {
             resultVec[i] = result;
@@ -300,8 +300,8 @@ NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double 
         double result = 0.0;
         double abserr = 0.0;
         
-        if( (x[i]>1) & (x[i]<threshold) ){
-            
+        //if( (x[i]>1) & (x[i]<threshold) ){
+          if( (x[i]<threshold) ){
             // QAGI adaptive integration on infinite intervals
             double err = gsl_integration_qagil(&F, x[i]-1, 1e-12, relerr, 1e5, work, &result, &abserr);
             
@@ -315,7 +315,7 @@ NumericVector dmixture_me(NumericVector x, double tau_sqd, double delta, double 
             }
         }
         else if (x[i]>=threshold) {result = asymptotic_d(x[i], delta);}
-        else {result = -1.0;}
+        //else {result = -1.0;}
         
         if (result > 0) {
             resultVec[i] = result;
