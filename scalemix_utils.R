@@ -136,8 +136,8 @@ qmixture.me.interp <- function(p, tau_sqd, delta, mu=0, cdf.vals = NULL, x.vals 
 ##
 mix.distn.integrand <- function(x, xval, tau_sqd, delta) {
   prod <- rep(0, length(x))
-  
-  half_result = (delta/(2*delta-1))*(xval-x)^(-(1-delta)/delta)-((1-delta)/(2*delta-1))*(xval-x)^(-1)
+  if(abs(delta-0.5)<1e-4) {half_result = pow(xval-x,-1)*(log(xval-x)+1)} else {
+    half_result = (delta/(2*delta-1))*(xval-x)^(-(1-delta)/delta)-((1-delta)/(2*delta-1))*(xval-x)^(-1)}
   prod <- dnorm(x, 0.0, sqrt(tau_sqd)) * half_result
   return(prod)
 }
@@ -145,7 +145,8 @@ mix.distn.integrand <- function(x, xval, tau_sqd, delta) {
 mix.dens.integrand <- function(x, xval, tau_sqd, delta) {
   prod <- rep(0, length(x))
   
-  half_result = ((1-delta)/(2*delta-1))*(xval-x)^{-2}-((1-delta)/(2*delta-1))*(xval-x)^(-1/delta)
+  if(abs(delta-0.5)<1e-4) {half_result = -pow(xval-x,-2)*log(xval-x)} else {
+    half_result = ((1-delta)/(2*delta-1))*(xval-x)^{-2}-((1-delta)/(2*delta-1))*(xval-x)^(-1/delta)}
   prod <- dnorm(x, 0.0, sqrt(tau_sqd)) * half_result
   return(prod)
 }
